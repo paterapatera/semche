@@ -1,0 +1,201 @@
+# ユーザーはベクトルデータをChromaDBに保存できる
+
+## 概要
+
+ユーザーが生成したベクトルデータをChromaDBに保存できるようにします。
+テキストデータとそのメタデータとともにベクトル埋め込みをChromaDBに永続化し、後続の検索や類似度計算に利用できるようにします。
+
+## 完了条件(上から順にチェックしてください)
+
+- [ ] ストーリーに実装内容の詳細が記載されている
+- [ ] ChromaDBの依存関係がインストールされている
+- [ ] ChromaDBクライアントの初期化が実装されている
+- [ ] コレクションの作成・取得機能が実装されている
+- [ ] ベクトルデータの保存機能が実装されている
+- [ ] メタデータの保存機能が実装されている
+- [ ] 単一データの保存が正常に動作する
+- [ ] バッチデータの保存が正常に動作する
+- [ ] データの永続化が確認できる
+- [ ] エラーハンドリングが適切に実装されている
+- [ ] テストが全てパスする
+- [ ] 手動での動作確認が完了している
+- [ ] 今回更新したコードの詳細設計書が更新されている
+
+## 実装内容
+
+### 1. 環境セットアップ
+
+- 必要なライブラリのインストール
+  - `chromadb`
+  - `chromadb-client` (必要に応じて)
+- ChromaDBの初期化設定
+  - 永続化ディレクトリの設定
+  - クライアントモードの選択（ローカル/サーバー）
+
+### 2. ChromaDBクライアントの実装
+
+- クライアントの初期化
+- コレクションの作成・取得
+- 接続管理とリソース解放
+
+### 3. データ保存機能の実装
+
+- ベクトルデータの保存
+  - embeddings: ベクトルデータ
+  - documents: 元のテキストデータ
+  - metadatas: メタデータ（任意）
+  - ids: ドキュメントID
+- バッチ保存機能
+- 既存データの更新（upsert）機能
+
+### 4. API設計
+
+- 関数名: `save_to_chromadb()` または類似の名前
+- パラメータ:
+  - `collection_name`: コレクション名（str）
+  - `embeddings`: ベクトルデータ（List[List[float]]）
+  - `documents`: テキストデータ（List[str]）
+  - `metadatas`: メタデータ（Optional[List[dict]]）
+  - `ids`: ドキュメントID（Optional[List[str]]）
+- 戻り値: 保存結果（成功/失敗、保存件数など）
+
+### 5. エラーハンドリング
+
+- ChromaDB接続エラー
+- コレクション作成エラー
+- データ保存エラー
+- 不正なデータ形式の処理
+- ディスク容量不足の処理
+
+### 6. テスト実装
+
+- 単体テスト:
+  - クライアント初期化テスト
+  - コレクション作成テスト
+  - 単一データ保存テスト
+  - バッチデータ保存テスト
+  - メタデータ保存テスト
+  - データ更新テスト
+- 統合テスト:
+  - エンドツーエンドの保存・取得テスト
+  - 永続化確認テスト
+  - パフォーマンステスト
+
+### 7. ドキュメント作成
+
+- 使用方法の説明
+- ChromaDBの設定方法
+- データ構造の説明
+- 入出力例
+- 詳細設計書の作成/更新
+
+## 技術仕様
+
+### ChromaDB設定
+
+- データベースタイプ: ローカル永続化 or クライアント/サーバーモード
+- 永続化ディレクトリ: `./chroma_db` (デフォルト、設定可能)
+- 距離関数: コサイン類似度、L2距離、内積から選択可能
+
+### 依存ライブラリ
+
+```python
+chromadb>=0.4.0
+```
+
+### データ構造
+
+- **Collection**: データの論理的なグループ
+- **Document**: 元のテキストデータ
+- **Embedding**: ベクトルデータ（768次元など）
+- **Metadata**: 任意のメタデータ（辞書形式）
+  - 例: `{"source": "file.txt", "timestamp": "2025-11-03", "category": "tech"}`
+- **ID**: 一意の識別子（文字列）
+
+### 実装例（イメージ）
+
+```python
+import chromadb
+from chromadb.config import Settings
+
+class ChromaDBManager:
+    def __init__(self, persist_directory: str = "./chroma_db"):
+        """ChromaDBクライアントを初期化"""
+        self.client = chromadb.Client(Settings(
+            persist_directory=persist_directory,
+            anonymized_telemetry=False
+        ))
+
+    def save_to_chromadb(
+        self,
+        collection_name: str,
+        embeddings: list[list[float]],
+        documents: list[str],
+        metadatas: list[dict] | None = None,
+        ids: list[str] | None = None
+    ) -> dict:
+        """
+        ベクトルデータをChromaDBに保存する
+
+        Args:
+            collection_name: コレクション名
+            embeddings: ベクトルデータ
+            documents: 元のテキストデータ
+            metadatas: メタデータ（オプション）
+            ids: ドキュメントID（オプション）
+
+        Returns:
+            保存結果
+        """
+        # コレクションの取得または作成
+        collection = self.client.get_or_create_collection(
+            name=collection_name,
+            metadata={"description": "Vector embeddings collection"}
+        )
+
+        # IDの自動生成
+        if ids is None:
+            ids = [f"doc_{i}" for i in range(len(documents))]
+
+        # データの保存
+        collection.add(
+            embeddings=embeddings,
+            documents=documents,
+            metadatas=metadatas,
+            ids=ids
+        )
+
+        return {
+            "status": "success",
+            "collection": collection_name,
+            "count": len(documents)
+        }
+```
+
+## パフォーマンス考慮事項
+
+- バッチ保存による効率化
+- 大量データの分割保存
+- インデックス作成の最適化
+- メモリ使用量の管理
+- 永続化ディレクトリのディスク容量監視
+
+## セキュリティ考慮事項
+
+- 永続化ディレクトリのアクセス権限設定
+- メタデータに機密情報を含めない
+- データのバックアップ戦略
+
+## 今後の拡張性
+
+- データの検索機能（別ストーリー）
+- 類似度検索機能（別ストーリー）
+- データの削除・更新機能
+- コレクションの管理機能
+- 統計情報の取得機能
+
+## 参考資料
+
+- [ChromaDB Documentation](https://docs.trychroma.com/)
+- [ChromaDB Python Client](https://docs.trychroma.com/reference/py-client)
+- [ChromaDB Usage Guide](https://docs.trychroma.com/usage-guide)
