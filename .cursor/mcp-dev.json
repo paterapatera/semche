@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "semche-dev": {
+      "command": "npm",
+      "args": ["run", "dev"],
+      "cwd": "/home/pater/semche",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}
