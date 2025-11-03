@@ -4,6 +4,48 @@
 
 下記のテンプレートに従い、ストーリーを作成してください。
 
+---
+
+## MCPサーバー開発ガイドライン（README.mdより抜粋・補足）
+
+### 概要
+
+- 本プロジェクトはLangChainとChromaDBによるベクトル検索機能を目指すMCPサーバー実装です。
+- 現状は`hello`ツールのサンプル実装があり、今後ベクトル埋め込み・検索・登録機能を拡張予定です。
+
+### 開発・運用手順
+
+1. MCPサーバーの新規ツール追加は`list_tools()`で定義、`call_tool()`で実装、テストは`tests/`配下に追加。
+2. 依存管理は`pyproject.toml`で行い、`uv sync`でインストール。
+3. サーバー起動は`uv run python src/semche/mcp_server.py`。
+4. MCP Inspectorによる対話テストが可能。
+5. テストは`uv run pytest`で実行。
+
+### プロジェクト構成例
+
+```
+/home/pater/semche/
+├── src/semche/         # サーバー・ツール実装
+├── tests/              # テストコード
+├── pyproject.toml      # 依存管理
+├── README.md           # プロジェクト概要
+└── story/              # ストーリー管理
+```
+
+### ツール追加・拡張のポイント
+
+- ツール名・パラメータ・返却値はREADMEのhelloツール例を参考に記載。
+- ベクトル埋め込み・検索機能はLangChain/ChromaDBのAPI設計に準拠。
+- 詳細設計書は`.exp.md`形式で各コードファイルと同じ場所に配置。
+
+### テスト・開発運用
+
+- MCP Inspectorで対話テスト可能。
+- pytestで自動テスト・カバレッジ計測。
+- 依存追加時は`uv sync`で反映。
+
+---
+
 ````markdown
 # {ストーリーのタイトル}
 
