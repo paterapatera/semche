@@ -15,7 +15,7 @@
   - `embedding.py`: sentence-transformers/stsb-xlm-r-multilingualによる768次元ベクトル変換
   - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）
   - `mcp_server.py`: FastMCPでツールを登録（実装は`src/semche/tools/`へ委譲）
-  - MCPツール: `hello`, `put_document`（テキストをベクトル化してChromaDBに保存・upsert）
+  - MCPツール: `hello`, `put_document`, `search`（セマンティック検索）
 - 今後の拡張: 類似検索ツール（search）、MCPツールの拡充
 
 ### 開発・運用手順
@@ -38,7 +38,9 @@
 │   │   ├── hello.py                 # helloツール
 │   │   ├── hello.py.exp.md          # helloツール詳細設計
 │   │   ├── document.py              # put_documentツール
-│   │   └── document.py.exp.md       # put_documentツール詳細設計
+│   │   ├── document.py.exp.md       # put_documentツール詳細設計
+│   │   ├── search.py                # searchツール
+│   │   └── search.py.exp.md         # searchツール詳細設計
 │   ├── embedding.py                 # ベクトル埋め込み機能
 │   ├── embedding.py.exp.md          # 埋め込みモジュール詳細設計書
 │   ├── chromadb_manager.py          # ChromaDB保存管理

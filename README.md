@@ -98,7 +98,9 @@ uv run pytest --cov=semche --cov-report=html
 │       │   ├── hello.py             # helloツール
 │       │   ├── hello.py.exp.md      # helloツール詳細設計
 │       │   ├── document.py          # put_documentツール
-│       │   └── document.py.exp.md   # put_documentツール詳細設計
+│       │   ├── document.py.exp.md   # put_documentツール詳細設計
+│       │   ├── search.py            # searchツール
+│       │   └── search.py.exp.md     # searchツール詳細設計
 │       ├── embedding.py            # テキスト埋め込み機能
 │       ├── embedding.py.exp.md     # 埋め込みモジュール詳細設計書
 │       ├── chromadb_manager.py     # ChromaDBストレージマネージャー
@@ -199,6 +201,58 @@ Hello, Alice!
   "status": "error",
   "message": "テキストが空です",
   "error_type": "ValidationError"
+}
+```
+
+### search
+
+クエリ文字列に対するセマンティック検索を実行し、類似ドキュメントを上位`top_k`件返します。
+
+**パラメータ:**
+
+- `query` (string, 必須): 検索クエリ
+- `top_k` (number, オプション): 取得件数（デフォルト: 5）
+- `file_type` (string, オプション): メタデータの file_type でフィルタ
+- `filepath_prefix` (string, オプション): 取得後にパスの接頭辞でフィルタ
+- `normalize` (boolean, オプション): クエリベクトルの正規化（デフォルト: false）
+- `min_score` (number, オプション): 類似度の下限（0.0〜1.0）
+- `include_documents` (boolean, オプション): 本文プレビューを含める（デフォルト: true）
+
+**返却値:**
+
+- 辞書（dict）形式の結果
+  - `status`, `message`, `results`（`[{ filepath, score, document?, metadata }]`）, `count`, `query_vector_dimension`, `persist_directory`
+
+**例:**
+
+```json
+{
+  "name": "search",
+  "arguments": {
+    "query": "ペット",
+    "top_k": 3,
+    "file_type": "animal",
+    "include_documents": false
+  }
+}
+```
+
+**レスポンス（成功時）:**
+
+```json
+{
+  "status": "success",
+  "message": "検索が完了しました",
+  "results": [
+    {
+      "filepath": "/docs/dog.txt",
+      "score": 0.79,
+      "metadata": { "file_type": "animal", "updated_at": "2025-11-03T12:00:00" }
+    }
+  ],
+  "count": 1,
+  "query_vector_dimension": 768,
+  "persist_directory": "./chroma_db"
 }
 ```
 

@@ -169,3 +169,68 @@ class ChromaDBManager:
         except Exception as e:
             logging.error(f"ChromaDB取得に失敗: {e}")
             raise ChromaDBError(f"ChromaDB取得に失敗: {e}")
+
+    def query(
+        self,
+        query_embeddings: Sequence[Sequence[float]],
+        top_k: int = 5,
+        where: Optional[Dict[str, Any]] = None,
+        include_documents: bool = True,
+    ) -> Dict[str, Any]:
+        """クエリベクトルで近傍検索を行う。
+
+        Returns ChromaDBのquery結果をラップした辞書。
+        1件のクエリを想定（query_embeddings[0]）。
+        """
+        try:
+            include_fields = ["metadatas", "distances"]
+            if include_documents:
+                include_fields.append("documents")
+
+            res = self.collection.query(
+                query_embeddings=list(query_embeddings),
+                n_results=int(max(1, top_k)),
+                where=where if where else None,
+                include=include_fields,
+            )
+
+            # Chroma の返却は各フィールドが [ [ ... ] ] の二重配列（クエリ毎）
+            # ids は include に指定せずとも返る場合があるが、互換性のため存在チェックのみ
+            ids = (res.get("ids") or [[]])[0]
+            metadatas = (res.get("metadatas") or [[]])[0]
+            distances = (res.get("distances") or [[]])[0]
+            documents = (res.get("documents") or [[]])[0] if include_documents else []
+
+            items: List[Dict[str, Any]] = []
+            for i, _id in enumerate(ids):
+                md = metadatas[i] if i < len(metadatas) else {}
+                dist = distances[i] if i < len(distances) else None
+                # cosine 距離を類似度に変換（距離がない場合は None）
+                score = 1.0 - dist if isinstance(dist, (int, float)) else None
+                doc = documents[i] if include_documents and i < len(documents) else None
+                items.append(
+                    {
+                        "id": _id,
+                        "filepath": md.get("filepath"),
+                        "score": score,
+                        "document": doc,
+                        "metadata": {
+                            "file_type": md.get("file_type"),
+                            "updated_at": md.get("updated_at"),
+                        },
+                    }
+                )
+
+            return {
+                "status": "success",
+                "collection": self.collection_name,
+                "persist_directory": self.persist_directory,
+                "distance": self.distance,
+                "results": items,
+                "count": len(items),
+            }
+        except ChromaDBError:
+            raise
+        except Exception as e:
+            logging.error(f"ChromaDB検索に失敗: {e}")
+            raise ChromaDBError(f"ChromaDB検索に失敗: {e}")

@@ -53,6 +53,7 @@ mcp = FastMCP("semche")
 
 - hello: `src/semche/tools/hello.py`（設計: `hello.py.exp.md`）
 - put_document: `src/semche/tools/document.py`（設計: `document.py.exp.md`）
+- search: `src/semche/tools/search.py`（設計: `search.py.exp.md`）
 
 ## データフロー
 
