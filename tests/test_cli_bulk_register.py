@@ -77,27 +77,49 @@ class TestIsBinaryFile:
 class TestGenerateDocumentId:
     """Tests for generate_document_id function."""
 
-    def test_relative_path_no_prefix(self):
-        """Test ID generation with relative path and no prefix."""
-        cwd = Path("/var")
-        file_path = Path("/var/test/file.md")
+    def test_absolute_path_default(self):
+        """Test ID generation with absolute path (default behavior)."""
+        cwd = Path("/home/user/project")
+        file_path = Path("/home/user/project/docs/file.md")
         doc_id = generate_document_id(file_path, cwd, "")
-        assert doc_id == "test/file.md"
+        assert doc_id == "/home/user/project/docs/file.md"
+
+    def test_absolute_path_with_prefix(self):
+        """Test ID generation with absolute path and prefix."""
+        cwd = Path("/home/user/project")
+        file_path = Path("/home/user/project/docs/file.md")
+        doc_id = generate_document_id(file_path, cwd, "myproject")
+        assert doc_id == "myproject:/home/user/project/docs/file.md"
+
+    def test_relative_path_flag(self):
+        """Test ID generation with relative path flag."""
+        cwd = Path("/home/user/project")
+        file_path = Path("/home/user/project/docs/file.md")
+        doc_id = generate_document_id(file_path, cwd, "", use_relative_path=True)
+        assert doc_id == "docs/file.md"
 
     def test_relative_path_with_prefix(self):
-        """Test ID generation with relative path and prefix."""
-        cwd = Path("/var")
-        file_path = Path("/var/test/file.md")
-        doc_id = generate_document_id(file_path, cwd, "abc")
-        assert doc_id == "abc:test/file.md"
+        """Test ID generation with relative path flag and prefix."""
+        cwd = Path("/home/user/project")
+        file_path = Path("/home/user/project/docs/file.md")
+        doc_id = generate_document_id(file_path, cwd, "abc", use_relative_path=True)
+        assert doc_id == "abc:docs/file.md"
 
-    def test_absolute_path_outside_cwd(self):
-        """Test ID generation for file outside cwd."""
-        cwd = Path("/var")
-        file_path = Path("/other/file.md")
+    def test_relative_path_outside_cwd(self):
+        """Test ID generation for file outside cwd with relative path flag."""
+        cwd = Path("/home/user/project")
+        file_path = Path("/other/docs/file.md")
+        doc_id = generate_document_id(file_path, cwd, "", use_relative_path=True)
+        # Should fallback to absolute path
+        assert doc_id == "/other/docs/file.md"
+
+    def test_path_separator_consistency(self):
+        """Test that path separators are always forward slashes."""
+        cwd = Path("/home/user/project")
+        file_path = Path("/home/user/project/docs/subdir/file.md")
         doc_id = generate_document_id(file_path, cwd, "")
-        # Should use absolute path
-        assert "other/file.md" in doc_id or str(file_path) in doc_id
+        assert "\\" not in doc_id
+        assert "/" in doc_id
 
 
 class TestReadFileContent:
@@ -188,8 +210,8 @@ class TestResolveInputs:
 class TestProcessFiles:
     """Tests for process_files function."""
 
-    def test_process_single_file(self, tmp_path):
-        """Test processing single file."""
+    def test_process_single_file_absolute_path(self, tmp_path):
+        """Test processing single file with absolute path (default)."""
         file1 = tmp_path / "file1.txt"
         file1.write_text("Test content for embedding")
         
@@ -203,17 +225,40 @@ class TestProcessFiles:
             "",
             "test",
             mock_embedder,
+            use_relative_path=False,  # Default: absolute path
         )
         
         assert len(embeddings) == 1
         assert len(documents) == 1
         assert len(ids) == 1
         assert documents[0] == "Test content for embedding"
-        assert ids[0] == "file1.txt"
+        # Should be absolute path
+        assert ids[0] == str(file1.as_posix())
         assert file_types[0] == "test"
 
-    def test_process_with_prefix(self, tmp_path):
-        """Test processing with ID prefix."""
+    def test_process_single_file_relative_path(self, tmp_path):
+        """Test processing single file with relative path."""
+        file1 = tmp_path / "file1.txt"
+        file1.write_text("Test content for embedding")
+        
+        # Mock embedder
+        mock_embedder = MagicMock()
+        mock_embedder.addDocument.return_value = [0.1] * 768
+        
+        embeddings, documents, ids, updated_at_list, file_types = process_files(
+            [file1],
+            tmp_path,
+            "",
+            "test",
+            mock_embedder,
+            use_relative_path=True,
+        )
+        
+        assert len(embeddings) == 1
+        assert ids[0] == "file1.txt"
+
+    def test_process_with_prefix_absolute(self, tmp_path):
+        """Test processing with ID prefix and absolute path."""
         file1 = tmp_path / "file1.txt"
         file1.write_text("Test content")
         
@@ -226,6 +271,26 @@ class TestProcessFiles:
             "myprefix",
             "note",
             mock_embedder,
+            use_relative_path=False,
+        )
+        
+        assert ids[0] == f"myprefix:{file1.as_posix()}"
+
+    def test_process_with_prefix_relative(self, tmp_path):
+        """Test processing with ID prefix and relative path."""
+        file1 = tmp_path / "file1.txt"
+        file1.write_text("Test content")
+        
+        mock_embedder = MagicMock()
+        mock_embedder.addDocument.return_value = [0.1] * 768
+        
+        embeddings, documents, ids, updated_at_list, file_types = process_files(
+            [file1],
+            tmp_path,
+            "myprefix",
+            "note",
+            mock_embedder,
+            use_relative_path=True,
         )
         
         assert ids[0] == "myprefix:file1.txt"
@@ -250,7 +315,6 @@ class TestProcessFiles:
         
         # Only text file should be processed
         assert len(embeddings) == 1
-        assert ids[0] == "text.txt"
 
 
 class TestCLIIntegration:

@@ -79,13 +79,15 @@ doc-update [オプション] [入力パス...]
 #### 基本的な使用例
 
 ```bash
-# ディレクトリ配下のMarkdownファイルを登録
+# ディレクトリ配下のMarkdownファイルを登録（デフォルト：絶対パス）
 doc-update ./docs/**/*.md --file-type note
 
-# プレフィックス付きで登録（実行場所: /var）
-cd /var
-doc-update test/**/*.md --id-prefix abc --file-type note
-# → test/test1.md は abc:test/test1.md として登録
+# 相対パスで登録
+doc-update ./docs/**/*.md --use-relative-path --file-type note
+
+# プレフィックス付きで登録（絶対パス）
+doc-update ./project --id-prefix myproject --file-type code
+# → /home/user/project/file.md は myproject:/home/user/project/file.md として登録
 
 # 日付フィルタとignoreパターン
 doc-update ./wiki --filter-from-date 2025-11-01 --ignore "**/.git/**" --file-type wiki
@@ -99,7 +101,8 @@ doc-update ./notes --chroma-dir /tmp/chroma --file-type memo
 - `inputs` (位置引数): ファイル/ディレクトリ/ワイルドカードパターン（複数可）
   - 例: `./docs`, `**/*.md`, `/var/test/**/*.txt`
 - `--id-prefix PREFIX`: ドキュメントIDのプレフィックス
-  - 指定すると `PREFIX:相対パス` 形式のIDが生成されます
+  - 指定すると `PREFIX:パス` 形式のIDが生成されます
+- `--use-relative-path`: 相対パスでIDを生成（デフォルトは絶対パス）
 - `--file-type TYPE`: メタデータのfile_type（デフォルト: `none`）
   - 単一値のみ指定可能（例: `spec`, `note`, `code`）
 - `--filter-from-date YYYY-MM-DD`: 指定日時以降に更新されたファイルのみ対象
@@ -111,17 +114,39 @@ doc-update ./notes --chroma-dir /tmp/chroma --file-type memo
 
 #### ID生成ルール
 
-- 実行ディレクトリ（`cwd`）からの相対パスをIDとして使用
-- `--id-prefix` を指定すると `プレフィックス:相対パス` 形式
-- パスセパレータは `/` に統一
+**デフォルト動作（絶対パス）**:
+
+- ファイルの絶対パスをIDとして使用（v0.2.0より）
+- `--id-prefix` を指定すると `プレフィックス:絶対パス` 形式
+- パスセパレータは `/` に統一（Windows互換性）
+
+**相対パスオプション**:
+
+- `--use-relative-path` を指定すると、実行ディレクトリ（`cwd`）からの相対パスをIDとして使用
+- `--id-prefix` と併用可能: `プレフィックス:相対パス` 形式
 
 **例**:
 
 ```bash
-cd /var
-doc-update test/file.md --id-prefix myproject
-# → ID: myproject:test/file.md
+# 絶対パス（デフォルト）
+cd /home/user/project
+doc-update docs/file.md
+# → ID: /home/user/project/docs/file.md
+
+# 絶対パス + プレフィックス
+doc-update docs/file.md --id-prefix myproject
+# → ID: myproject:/home/user/project/docs/file.md
+
+# 相対パス
+doc-update docs/file.md --use-relative-path
+# → ID: docs/file.md
+
+# 相対パス + プレフィックス
+doc-update docs/file.md --use-relative-path --id-prefix myproject
+# → ID: myproject:docs/file.md
 ```
+
+**注意**: 絶対パスと相対パスは異なるドキュメントとして扱われます。
 
 #### 処理の流れ
 

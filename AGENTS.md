@@ -16,7 +16,11 @@
   - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）、検索（query）、取得（get）、削除（delete）
   - `mcp_server.py`: FastMCPでツールを登録（実装は`src/semche/tools/`へ委譲）
   - MCPツール: `put_document`, `search`（セマンティック検索）, `delete_document`（単一ID削除）
-  - CLIツール: `doc-update`（一括ドキュメント登録、ワイルドカード対応、日付フィルタ、ignoreパターン、IDプレフィックス）
+  - CLIツール: `doc-update`（一括ドキュメント登録）
+    - ワイルドカード対応、日付フィルタ、ignoreパターン、IDプレフィックス
+    - **デフォルト: 絶対パスでID生成**（v0.2.0より）
+    - `--use-relative-path` オプションで相対パスに切り替え可能
+    - パス区切り文字を `/` に統一（Windows互換性）
 - 今後の拡張: バッチ削除・条件削除、ツールの拡充、パフォーマンス最適化
 
 ### 開発・運用手順

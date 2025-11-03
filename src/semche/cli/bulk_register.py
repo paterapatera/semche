@@ -6,7 +6,6 @@ from files, directories, and wildcard patterns into ChromaDB with vector embeddi
 
 import argparse
 import logging
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -26,8 +25,11 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Register all markdown files in docs directory
+  # Register all markdown files in docs directory (absolute paths by default)
   doc-update ./docs/**/*.md --file-type note
+
+  # Register with relative paths
+  doc-update ./docs/**/*.md --use-relative-path --file-type note
 
   # Register with ID prefix
   doc-update ./project --id-prefix myproject --file-type code
@@ -48,6 +50,11 @@ Examples:
         "--id-prefix",
         default="",
         help="Prefix for document IDs (e.g., 'abc' → 'abc:path/to/file.md')",
+    )
+    parser.add_argument(
+        "--use-relative-path",
+        action="store_true",
+        help="Use relative paths for document IDs (default: absolute paths)",
     )
     parser.add_argument(
         "--file-type",
@@ -140,12 +147,17 @@ def resolve_inputs(
     for input_str in inputs:
         input_path = Path(input_str)
         
+        # Convert relative path to absolute based on cwd
+        if not input_path.is_absolute():
+            input_path = (cwd / input_path).resolve()
+        
         # Handle wildcard patterns
         if "**" in input_str or "*" in input_str:
             # Use cwd as base for glob
-            if input_path.is_absolute():
+            pattern_path = Path(input_str)
+            if pattern_path.is_absolute():
                 base = Path("/")
-                pattern = str(input_path.relative_to("/"))
+                pattern = str(pattern_path.relative_to("/"))
             else:
                 base = cwd
                 pattern = input_str
@@ -186,25 +198,28 @@ def resolve_inputs(
     return filtered
 
 
-def generate_document_id(file_path: Path, cwd: Path, prefix: str) -> str:
+def generate_document_id(file_path: Path, cwd: Path, prefix: str, use_relative_path: bool = False) -> str:
     """Generate document ID from file path.
     
     Args:
         file_path: Absolute path to file
         cwd: Current working directory
         prefix: Optional prefix for ID
+        use_relative_path: If True, use relative path; otherwise use absolute path (default)
     
     Returns:
-        Document ID (e.g., "prefix:relative/path/to/file.md")
+        Document ID (e.g., "prefix:path/to/file.md" or "prefix:/absolute/path/to/file.md")
     """
-    try:
-        rel_path = file_path.relative_to(cwd)
-    except ValueError:
-        # If file is outside cwd, use absolute path
-        rel_path = file_path
-    
-    # Convert to forward slashes for consistency
-    id_path = str(rel_path).replace(os.sep, "/")
+    if use_relative_path:
+        try:
+            rel_path = file_path.relative_to(cwd)
+            id_path = rel_path.as_posix()
+        except ValueError:
+            # If file is outside cwd, use absolute path
+            id_path = file_path.as_posix()
+    else:
+        # Use absolute path (default)
+        id_path = file_path.as_posix()
     
     if prefix:
         return f"{prefix}:{id_path}"
@@ -246,6 +261,7 @@ def process_files(
     id_prefix: str,
     file_type: str,
     embedder: Embedder,
+    use_relative_path: bool = False,
 ) -> Tuple[List[List[float]], List[str], List[str], List[str], List[str]]:
     """Process files to prepare for bulk registration.
     
@@ -268,7 +284,7 @@ def process_files(
             continue
         
         # Generate ID
-        doc_id = generate_document_id(file_path, cwd, id_prefix)
+        doc_id = generate_document_id(file_path, cwd, id_prefix, use_relative_path)
         
         # Get file modification time
         mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
@@ -352,6 +368,7 @@ def main() -> int:
             args.id_prefix,
             args.file_type,
             embedder,
+            use_relative_path=args.use_relative_path,
         )
     except Exception as e:
         logger.error(f"Failed to process files: {e}")

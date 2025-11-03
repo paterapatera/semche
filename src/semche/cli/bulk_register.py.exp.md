@@ -53,6 +53,7 @@
 
 - `inputs` (位置引数): ファイル/ディレクトリ/ワイルドカードパターン（複数可）
 - `--id-prefix`: ドキュメントIDのプレフィックス
+- `--use-relative-path`: 相対パスでIDを生成（デフォルトは絶対パス）
 - `--file-type`: メタデータのfile_type（デフォルト: `none`）
 - `--filter-from-date`: 指定日時以降のファイルのみ対象
 - `--ignore`: 除外パターン（複数指定可）
@@ -123,7 +124,7 @@
 5. 日付フィルタを適用（`os.path.getmtime()`で更新日時をチェック）
 6. 重複を除去してソート
 
-### `generate_document_id(file_path: Path, cwd: Path, prefix: str) -> str`
+### `generate_document_id(file_path: Path, cwd: Path, prefix: str, use_relative_path: bool = False) -> str`
 
 ファイルパスからドキュメントIDを生成します。
 
@@ -132,20 +133,39 @@
 - `file_path`: 絶対ファイルパス
 - `cwd`: 現在の作業ディレクトリ
 - `prefix`: IDプレフィックス（オプション）
+- `use_relative_path`: `True`の場合は相対パス、`False`（デフォルト）の場合は絶対パスを使用
 
 **戻り値**: ドキュメントID
 
-**ID生成ルール**:
+**ID生成ルール（v0.2.0より変更）**:
 
-1. `cwd`からの相対パスを計算（`os.path.relpath()`）
-2. パスセパレータを`/`に統一
-3. プレフィックスがある場合: `{prefix}:{relative_path}`
-4. プレフィックスがない場合: `{relative_path}`
+**デフォルト動作（絶対パス）**:
+
+1. ファイルの絶対パスを使用
+2. パスセパレータを`/`に統一（`Path.as_posix()`）
+3. プレフィックスがある場合: `{prefix}:{absolute_path}`
+4. プレフィックスがない場合: `{absolute_path}`
+
+**相対パスオプション（`use_relative_path=True`）**:
+
+1. `cwd`からの相対パスを計算（`Path.relative_to()`）
+2. ファイルが`cwd`外の場合は絶対パスにフォールバック
+3. パスセパレータを`/`に統一
+4. プレフィックスがある場合: `{prefix}:{relative_path}`
+5. プレフィックスがない場合: `{relative_path}`
 
 **例**:
 
-- `cwd=/var`, `file=/var/test/file.md`, `prefix=""` → `test/file.md`
-- `cwd=/var`, `file=/var/test/file.md`, `prefix="abc"` → `abc:test/file.md`
+絶対パス（デフォルト）:
+
+- `file=/home/user/project/docs/file.md`, `prefix=""` → `/home/user/project/docs/file.md`
+- `file=/home/user/project/docs/file.md`, `prefix="myproject"` → `myproject:/home/user/project/docs/file.md`
+
+相対パス（`use_relative_path=True`）:
+
+- `cwd=/home/user/project`, `file=/home/user/project/docs/file.md`, `prefix=""` → `docs/file.md`
+- `cwd=/home/user/project`, `file=/home/user/project/docs/file.md`, `prefix="abc"` → `abc:docs/file.md`
+- `cwd=/home/user/project`, `file=/other/file.md`, `prefix=""` → `/other/file.md`（フォールバック）
 
 ### `read_file_content(file_path: Path) -> Optional[str]`
 
@@ -164,7 +184,7 @@
 - エンコードエラー（UTF-8以外）
 - 読み込みエラー
 
-### `process_files(file_paths: List[Path], cwd: Path, id_prefix: str, file_type: str, embedder: Embedder) -> Tuple[...]`
+### `process_files(file_paths: List[Path], cwd: Path, id_prefix: str, file_type: str, embedder: Embedder, use_relative_path: bool = False) -> Tuple[...]`
 
 ファイルリストを処理し、埋め込みベクトルとメタデータを生成します。
 
@@ -175,6 +195,7 @@
 - `id_prefix`: IDプレフィックス
 - `file_type`: メタデータのfile_type
 - `embedder`: Embedderインスタンス
+- `use_relative_path`: 相対パスでIDを生成する場合は`True`（デフォルト: `False`）
 
 **戻り値**: `(embeddings, documents, ids, updated_at_list, file_types)` のタプル
 
@@ -182,7 +203,8 @@
 
 1. ファイル内容を読み込み（`read_file_content()`）
 2. ドキュメントIDを生成（`generate_document_id()`）
-3. ファイルの更新日時を取得（`os.path.stat().st_mtime`）
+   - `use_relative_path`パラメータを渡してID生成方法を制御
+3. ファイルの更新日時を取得（`Path.stat().st_mtime`）
 4. テキストをベクトル化（`embedder.addDocument()`）
 5. ベクトル形式を正規化（`ensure_single_vector()`）
 6. バッチデータに追加
@@ -276,10 +298,17 @@ ChromaDBManager.save() → 一括保存
 - 日付パース（正常/異常）
 - ignoreパターンマッチング
 - バイナリファイル検知
-- ID生成（相対パス、プレフィックス）
+- ID生成
+  - 絶対パス（デフォルト、プレフィックス付き）
+  - 相対パス（オプション、プレフィックス付き、cwd外フォールバック）
+  - パスセパレータ統一
 - ファイル読み込み（UTF-8、空、バイナリ）
 - 入力解決（単一ファイル、ディレクトリ、ignore、日付フィルタ）
-- ファイル処理（単一、プレフィックス、バイナリスキップ）
+- ファイル処理
+  - 絶対パスモード
+  - 相対パスモード
+  - プレフィックス付き（絶対/相対）
+  - バイナリスキップ
 - 統合テスト（基本フロー、ファイル未検出）
 
 ## 使用方法
@@ -287,11 +316,17 @@ ChromaDBManager.save() → 一括保存
 ### 基本的な使用例
 
 ```bash
-# ディレクトリ配下のMarkdownファイルを登録
+# ディレクトリ配下のMarkdownファイルを登録（デフォルト：絶対パス）
 doc-update ./docs/**/*.md --file-type note
 
-# プレフィックス付きで登録
+# 相対パスで登録
+doc-update ./docs/**/*.md --use-relative-path --file-type note
+
+# プレフィックス付きで登録（絶対パス）
 doc-update ./project --id-prefix myproject --file-type code
+
+# 相対パス + プレフィックス
+doc-update ./project --use-relative-path --id-prefix myproject --file-type code
 
 # 日付フィルタとignoreパターン
 doc-update ./wiki --filter-from-date 2025-11-01 --ignore "**/.git/**"
@@ -314,11 +349,13 @@ doc-update = "semche.cli.bulk_register:main"
 ## バージョン情報
 
 - 初版作成日: 2025-11-03
-- バージョン: 0.1.0
+- バージョン: 0.2.0
 - 最終更新日: 2025-11-03
 
 ## 変更履歴
 
-| 日付       | バージョン | 変更内容                        |
-| ---------- | ---------- | ------------------------------- |
-| 2025-11-03 | 0.1.0      | 初版作成。CLI一括登録機能の実装 |
+| 日付       | バージョン | 変更内容                                                        |
+| ---------- | ---------- | --------------------------------------------------------------- |
+| 2025-11-03 | 0.2.0      | デフォルトを絶対パスに変更、`--use-relative-path`オプション追加 |
+| 2025-11-03 | 0.1.0      | 初版作成                                                        |
+| 2025-11-03 | 0.1.0      | 初版作成。CLI一括登録機能の実装                                 |
