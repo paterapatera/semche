@@ -12,7 +12,6 @@
 - **テキスト埋め込み**: sentence-transformers/stsb-xlm-r-multilingualを使用して、テキストを768次元ベクトルに変換
 - **ベクトルストレージ**: メタデータ（filepath、updated_at、file_type）とともにベクトルをChromaDBに永続化
 - **Upsert対応**: 同じfilepathで保存する場合、既存ドキュメントを自動更新
-- **Helloツール**: テスト用の簡易挨拶ツール（"Hello, {name}!"を返す）
 
 ## 必要要件
 
@@ -63,13 +62,8 @@ uv run mcp dev src/semche/mcp_server.py
 インタラクティブなインスペクターが起動し、以下が可能です:
 
 1. 利用可能なツールの表示
-2. 異なるパラメータで`hello`ツールを呼び出し
+2. 異なるパラメータでツールを呼び出し
 3. レスポンスの確認
-
-MCP Inspectorでの使用例:
-
-- パラメータなしで`hello`を呼び出し: "Hello, World!"を返す
-- 名前"Alice"で`hello`を呼び出し: "Hello, Alice!"を返す
 
 ### CLIツール: doc-update
 
@@ -210,8 +204,6 @@ uv run mypy src/semche/mcp_server.py
 │       ├── mcp_server.py           # MCPサーバー実装
 │       ├── tools/                   # ツール実装（サーバーから委譲）
 │       │   ├── __init__.py
-│       │   ├── hello.py             # helloツール
-│       │   ├── hello.py.exp.md      # helloツール詳細設計
 │       │   ├── document.py          # put_documentツール
 │       │   ├── document.py.exp.md   # put_documentツール詳細設計
 │       │   ├── search.py            # searchツール
@@ -239,35 +231,6 @@ uv run mypy src/semche/mcp_server.py
 ```
 
 ## 利用可能なツール
-
-### hello
-
-挨拶メッセージを返します。
-
-**パラメータ:**
-
-- `name` (string, オプション): 挨拶する名前。デフォルトは"World"。
-
-**返却値:**
-
-- "Hello, {name}!"形式の挨拶メッセージ
-
-**例:**
-
-```json
-{
-  "name": "hello",
-  "arguments": {
-    "name": "Alice"
-  }
-}
-```
-
-**レスポンス:**
-
-```
-Hello, Alice!
-```
 
 ### put_document
 

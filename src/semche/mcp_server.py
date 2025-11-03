@@ -8,23 +8,10 @@ from mcp.server.fastmcp import FastMCP
 
 from semche.tools.delete import delete_document as _delete_document_tool
 from semche.tools.document import put_document as _put_document_tool
-from semche.tools.hello import hello as _hello_tool
 from semche.tools.search import search as _search_tool
 
 # Create FastMCP server instance
 mcp = FastMCP("semche")
-
-@mcp.tool()
-def hello(name: str = "World") -> str:
-    """Returns a greeting message.
-    
-    Args:
-        name: Name to greet (optional, defaults to 'World')
-        
-    Returns:
-        Greeting message in the format "Hello, {name}!"
-    """
-    return _hello_tool(name=name)
 
 
 @mcp.tool()
@@ -96,3 +83,7 @@ def delete_document(filepath: str) -> dict:
     """
     return _delete_document_tool(filepath=filepath)
 
+
+if __name__ == "__main__":
+    # Run the MCP server on stdio
+    mcp.run()
