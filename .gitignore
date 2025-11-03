@@ -48,5 +48,5 @@ htmlcov/
 Thumbs.db
 
 # Project specific
-chroma_data/
+chroma_db/
 *.log
