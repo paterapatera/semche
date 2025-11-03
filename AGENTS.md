@@ -11,7 +11,10 @@
 ### 概要
 
 - 本プロジェクトはLangChainとChromaDBによるベクトル検索機能を目指すMCPサーバー実装です。
-- 現状は`hello`ツールのサンプル実装があり、今後ベクトル埋め込み・検索・登録機能を拡張予定です。
+- 実装済み機能:
+  - `embedding.py`: sentence-transformers/stsb-xlm-r-multilingualによる768次元ベクトル変換
+  - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）
+- 今後の拡張: ベクトル検索・類似度計算機能、MCPツールとしての統合
 
 ### 開発・運用手順
 
@@ -26,10 +29,15 @@
 ```
 /home/pater/semche/
 ├── src/semche/         # サーバー・ツール実装
+│   ├── mcp_server.py          # MCPサーバー本体
+│   ├── embedding.py           # ベクトル埋め込み機能
+│   ├── chromadb_manager.py    # ChromaDB保存管理
+│   └── *.exp.md               # 各モジュールの詳細設計書
 ├── tests/              # テストコード
+├── story/              # ストーリー管理（要件・設計・完了記録）
 ├── pyproject.toml      # 依存管理
 ├── README.md           # プロジェクト概要
-└── story/              # ストーリー管理
+└── AGENTS.md           # 本ファイル（開発ガイドライン）
 ```
 
 ### ツール追加・拡張のポイント
