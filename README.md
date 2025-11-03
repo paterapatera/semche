@@ -409,3 +409,67 @@ TBD
 ## コントリビューション
 
 TBD
+
+## IDE/Agent 連携（Cursor など）
+
+MCP クライアント（Cursor の Agent など）から本サーバーを使うには、クライアント側の設定ファイル（例: `mcp.json` やクライアントの設定 UI）でサーバーの起動方法を指定します。
+
+MCP の統合方法は大きく2通りあります。
+
+1. STDIO でプロセスを起動して接続（command/args/env を指定）
+
+- クライアントがサーバープロセスを起動し、標準入出力で通信します。
+- この方式では command/args は必須、必要に応じて env を設定します。
+
+JSON 設定例（STDIO 方式、開発向け）:
+
+```json
+{
+  "mcpServers": {
+    "semche": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "python", "src/semche/mcp_server.py"],
+      "env": {
+        "SEMCHE_CHROMA_DIR": "${workspaceFolder}/chroma_db"
+      }
+    }
+  }
+}
+```
+
+補足:
+
+- `command`/`args` はクライアントが起動するプロセスを指定します。`uv` を使わない場合は `python src/semche/mcp_server.py` 相当を指定してください。
+- `env` は任意です。本プロジェクトでは `SEMCHE_CHROMA_DIR` を指定すると ChromaDB の永続ディレクトリを切り替えられます（未指定時は `./chroma_db`）。
+- 一部クライアントでは `mcp dev` などの開発用コマンドを `command` に指定できない場合があります。その場合は、純粋にサーバーを STDIO で起動するコマンドを指定してください。
+
+2. HTTP サーバーとして接続（url を指定）
+
+- サーバー側が HTTP エンドポイントを提供している場合は、`url` のみを指定します。
+- この方式では `command/args/env` は不要です（クライアントは既に稼働中の HTTP サーバーへ接続）。
+
+JSON 設定例（HTTP 方式）:
+
+```json
+{
+  "mcpServers": {
+    "semche": {
+      "type": "http",
+      "url": "http://localhost:8000/mcp"
+    }
+  }
+}
+```
+
+注意:
+
+- 本リポジトリのデフォルトは STDIO 想定です（MCP Inspector の開発体験: `uv run mcp dev src/semche/mcp_server.py`）。HTTP での提供を行う場合は、別途 HTTP ランナーの用意が必要です。
+- Cursor/IDE 側の設定キー名（`mcpServers` / `servers` など）はクライアント実装により異なります。ご利用のクライアントのドキュメントに従って読み替えてください。
+
+### よくある質問（FAQ）
+
+- Q: command, args, env の設定は必要？
+  - A: STDIO 方式でクライアントからサーバーを起動する場合は必要です。HTTP 方式で既存のエンドポイントへ接続する場合は不要です（`url` のみ）。
+- Q: どの環境変数を設定すべき？
+  - A: 必須はありませんが、`SEMCHE_CHROMA_DIR` を設定すると ChromaDB の保存先を制御できます。モデルのキャッシュ等を調整したい場合は環境に応じて `TRANSFORMERS_CACHE` や `SENTENCE_TRANSFORMERS_HOME` を設定するとダウンロード先を固定できます。
