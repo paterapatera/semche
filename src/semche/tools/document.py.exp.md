@@ -22,7 +22,6 @@
 - `ChromaDBError`（ChromaDB 操作時の例外）
   - 実装ファイル: `/home/pater/semche/src/semche/chromadb_manager.py`
 - 標準ライブラリ
-  - `json`（レスポンス生成）
   - `datetime.datetime`（ISO8601 タイムスタンプ生成）
 
 ## 設計ポリシー
@@ -37,18 +36,18 @@
 
 ## 関数仕様
 
-### `put_document(text: str, filepath: str, file_type: str | None = None, normalize: bool = False) -> str`
+### `put_document(text: str, filepath: str, file_type: str | None = None, normalize: bool = False) -> dict`
 
-- 役割: テキストを埋め込み → ChromaDB に保存（upsert）し、JSON 文字列で結果を返す
+- 役割: テキストを埋め込み → ChromaDB に保存（upsert）し、辞書形式で結果を返す
 - 引数:
   - `text`: 登録するテキスト（必須, 非空チェックあり）
   - `filepath`: ドキュメントの ID として扱うパス（必須, 非空チェックあり）
   - `file_type`: 任意のファイルタイプ（例: `"spec"`, `"jira"`）
   - `normalize`: 埋め込みベクトルの L2 正規化を行うか（デフォルト `False`）
-- 返り値: `str` JSON 文字列
+- 返り値: `dict` 辞書型
   - 成功時: `{"status": "success", "details": { ... }}`
   - 失敗時: `{"status": "error", "error_type": "..."}`
-- 例外: 関数外へは投げず、JSON へ変換して返却
+- 例外: 関数外へは投げず、辞書へ変換して返却
 
 ## 内部処理フロー
 
@@ -66,7 +65,7 @@ put_document(text, filepath, file_type, normalize)
   │     updated_at=[now],
   │     file_types=[file_type] or None,
   │  )
-  └─ JSON を生成して返却
+  └─ 辞書を生成して返却
 ```
 
 ## エラー仕様

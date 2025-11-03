@@ -36,12 +36,11 @@ def test_hello_with_custom_name():
 
 def test_put_document_success(tmp_path):
     """Test successful document registration."""
-    result_str = put_document(
+    result = put_document(
         text="これはテストドキュメントです。",
         filepath="/test/doc1.md",
         file_type="test"
     )
-    result = json.loads(result_str)
     
     assert result["status"] == "success"
     assert result["message"] == "ドキュメントを登録しました"
@@ -54,12 +53,11 @@ def test_put_document_success(tmp_path):
 
 def test_put_document_with_normalize():
     """Test document registration with normalization."""
-    result_str = put_document(
+    result = put_document(
         text="正規化テスト",
         filepath="/test/doc_normalized.md",
         normalize=True
     )
-    result = json.loads(result_str)
     
     assert result["status"] == "success"
     assert result["details"]["normalized"] is True
@@ -67,11 +65,10 @@ def test_put_document_with_normalize():
 
 def test_put_document_without_file_type():
     """Test document registration without file_type."""
-    result_str = put_document(
+    result = put_document(
         text="ファイルタイプなしのテスト",
         filepath="/test/doc_no_type.md"
     )
-    result = json.loads(result_str)
     
     assert result["status"] == "success"
     assert result["details"]["filepath"] == "/test/doc_no_type.md"
@@ -82,31 +79,28 @@ def test_put_document_upsert():
     filepath = "/test/doc_upsert.md"
     
     # 初回登録
-    result1_str = put_document(
+    result1 = put_document(
         text="初回のテキスト",
         filepath=filepath,
         file_type="v1"
     )
-    result1 = json.loads(result1_str)
     assert result1["status"] == "success"
     
     # 同じfilepathで更新
-    result2_str = put_document(
+    result2 = put_document(
         text="更新後のテキスト",
         filepath=filepath,
         file_type="v2"
     )
-    result2 = json.loads(result2_str)
     assert result2["status"] == "success"
 
 
 def test_put_document_empty_text():
     """Test error handling for empty text."""
-    result_str = put_document(
+    result = put_document(
         text="",
         filepath="/test/empty.md"
     )
-    result = json.loads(result_str)
     
     assert result["status"] == "error"
     assert result["error_type"] == "ValidationError"
@@ -115,11 +109,10 @@ def test_put_document_empty_text():
 
 def test_put_document_whitespace_only_text():
     """Test error handling for whitespace-only text."""
-    result_str = put_document(
+    result = put_document(
         text="   \n\t  ",
         filepath="/test/whitespace.md"
     )
-    result = json.loads(result_str)
     
     assert result["status"] == "error"
     assert result["error_type"] == "ValidationError"
@@ -127,11 +120,10 @@ def test_put_document_whitespace_only_text():
 
 def test_put_document_empty_filepath():
     """Test error handling for empty filepath."""
-    result_str = put_document(
+    result = put_document(
         text="有効なテキスト",
         filepath=""
     )
-    result = json.loads(result_str)
     
     assert result["status"] == "error"
     assert result["error_type"] == "ValidationError"
@@ -144,7 +136,6 @@ def test_put_document_multiple_calls():
     texts = ["ドキュメント1", "ドキュメント2", "ドキュメント3"]
     
     for fp, txt in zip(filepaths, texts):
-        result_str = put_document(text=txt, filepath=fp, file_type="multi")
-        result = json.loads(result_str)
+        result = put_document(text=txt, filepath=fp, file_type="multi")
         assert result["status"] == "success"
 

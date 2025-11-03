@@ -23,7 +23,7 @@
 1. 新規ツール追加はFastMCPの`@mcp.tool()`で公開し、実装は`src/semche/tools/*.py`に配置。テストは`tests/`配下に追加。
 2. 依存管理は`pyproject.toml`で行い、`uv sync`でインストール。
 3. サーバー起動は`uv run python src/semche/mcp_server.py`。
-4. MCP Inspectorによる対話テストが可能。
+4. MCP Inspectorによる対話テストが可能（`uv run mcp dev src/semche/mcp_server.py`）。
 5. テストは`uv run pytest`で実行。
 
 ### プロジェクト構成例
@@ -53,6 +53,7 @@
 ### ツール追加・拡張のポイント
 
 - FastMCPの`@mcp.tool()`で公開し、実装は`src/semche/tools/*.py`に配置。関数のシグネチャは型ヒントとdocstringで定義し、READMEのツール一覧にパラメータ・返却値を追記する。
+- 戻り値は辞書（dict）形式を推奨（MCP Inspectorで構造化データとして表示される）。
 - ベクトル埋め込み・検索機能はLangChain/ChromaDBのAPI設計に準拠。
 - 詳細設計書は`.exp.md`形式で各コードファイルと同じ場所に配置（ツールごとに作成）。
 

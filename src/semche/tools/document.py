@@ -29,7 +29,7 @@ def put_document(
     filepath: str,
     file_type: str | None = None,
     normalize: bool = False,
-) -> str:
+) -> dict:
     """テキストをベクトル化してChromaDBに保存します（upsert）。
 
     既存のfilepathがある場合は更新、なければ新規追加します。
@@ -37,26 +37,18 @@ def put_document(
     try:
         # 入力バリデーション
         if not text or not text.strip():
-            return json.dumps(
-                {
-                    "status": "error",
-                    "message": "テキストが空です",
-                    "error_type": "ValidationError",
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
+            return {
+                "status": "error",
+                "message": "テキストが空です",
+                "error_type": "ValidationError",
+            }
 
         if not filepath or not filepath.strip():
-            return json.dumps(
-                {
-                    "status": "error",
-                    "message": "filepathが空です",
-                    "error_type": "ValidationError",
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
+            return {
+                "status": "error",
+                "message": "filepathが空です",
+                "error_type": "ValidationError",
+            }
 
         # ベクトル化
         embedder = _get_embedder()
@@ -73,52 +65,36 @@ def put_document(
             file_types=[file_type] if file_type else None,
         )
 
-        return json.dumps(
-            {
-                "status": "success",
-                "message": "ドキュメントを登録しました",
-                "details": {
-                    "count": result["count"],
-                    "collection": result["collection"],
-                    "filepath": filepath,
-                    "vector_dimension": len(embedding),
-                    "persist_directory": result["persist_directory"],
-                    "normalized": normalize,
-                },
+        return {
+            "status": "success",
+            "message": "ドキュメントを登録しました",
+            "details": {
+                "count": result["count"],
+                "collection": result["collection"],
+                "filepath": filepath,
+                "vector_dimension": len(embedding),
+                "persist_directory": result["persist_directory"],
+                "normalized": normalize,
             },
-            ensure_ascii=False,
-            indent=2,
-        )
+        }
 
     except EmbeddingError as e:
-        return json.dumps(
-            {
-                "status": "error",
-                "message": f"埋め込み生成に失敗しました: {str(e)}",
-                "error_type": "EmbeddingError",
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
+        return {
+            "status": "error",
+            "message": f"埋め込み生成に失敗しました: {str(e)}",
+            "error_type": "EmbeddingError",
+        }
 
     except ChromaDBError as e:
-        return json.dumps(
-            {
-                "status": "error",
-                "message": f"ChromaDB保存に失敗しました: {str(e)}",
-                "error_type": "ChromaDBError",
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
+        return {
+            "status": "error",
+            "message": f"ChromaDB保存に失敗しました: {str(e)}",
+            "error_type": "ChromaDBError",
+        }
 
     except Exception as e:
-        return json.dumps(
-            {
-                "status": "error",
-                "message": f"予期しないエラーが発生しました: {str(e)}",
-                "error_type": type(e).__name__,
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
+        return {
+            "status": "error",
+            "message": f"予期しないエラーが発生しました: {str(e)}",
+            "error_type": type(e).__name__,
+        }

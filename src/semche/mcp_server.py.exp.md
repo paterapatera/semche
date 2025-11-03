@@ -17,8 +17,8 @@ FastMCP を使用してツールを登録します。実際のツール実装は
 
 ### 内部モジュール
 
-- `.tools.hello.hello`: helloツールの実装
-- `.tools.document.put_document`: ドキュメント登録ツールの実装
+- `semche.tools.hello`: helloツールの実装
+- `semche.tools.document.put_document`: ドキュメント登録ツールの実装
 
 ### 標準ライブラリ
 
@@ -29,8 +29,8 @@ FastMCP を使用してツールを登録します。実際のツール実装は
 | モジュール/クラス | インポート元         | 用途                    |
 | ----------------- | -------------------- | ----------------------- |
 | `FastMCP`         | `mcp.server.fastmcp` | MCPサーバーの作成と管理 |
-| `hello`           | `.tools.hello`       | helloツールの委譲先     |
-| `put_document`    | `.tools.document`    | 登録ツールの委譲先      |
+| `hello`           | `semche.tools`       | helloツールの委譲先     |
+| `put_document`    | `semche.tools`       | 登録ツールの委譲先      |
 
 ## グローバル変数とヘルパー関数
 
@@ -53,11 +53,6 @@ mcp = FastMCP("semche")
 
 - hello: `src/semche/tools/hello.py`（設計: `hello.py.exp.md`）
 - put_document: `src/semche/tools/document.py`（設計: `document.py.exp.md`）
-
-## 実装メモ: インポートのフォールバック
-
-- `mcp dev` で本ファイルがパッケージ外モジュールとしてロードされる場合、相対インポートが失敗するため、try/exceptで `from tools ...` にフォールバックしています。
-- パッケージとしてインポートされるテスト環境では相対インポート（`.tools...`）を使用します。
 
 ## データフロー
 

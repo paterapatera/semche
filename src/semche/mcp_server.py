@@ -6,13 +6,8 @@ Actual tool implementations live under src.semche.tools.*
 
 from mcp.server.fastmcp import FastMCP
 
-# Prefer package-relative imports, but fall back when run via `mcp dev` which loads without a package
-try:
-    from .tools import hello as _hello_tool  # type: ignore
-    from .tools import put_document as _put_document_tool  # type: ignore
-except Exception:
-    from tools import hello as _hello_tool  # type: ignore
-    from tools import put_document as _put_document_tool  # type: ignore
+from semche.tools import hello as _hello_tool
+from semche.tools import put_document as _put_document_tool
 
 
 # Create FastMCP server instance
@@ -37,7 +32,7 @@ def put_document(
     filepath: str,
     file_type: str = None,
     normalize: bool = False,
-) -> str:
+) -> dict:
     """テキストをベクトル化してChromaDBに保存します（upsert）。
 
     既存のfilepathがある場合は更新、なければ新規追加します。
