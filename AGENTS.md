@@ -14,11 +14,13 @@
 - 実装済み機能:
   - `embedding.py`: sentence-transformers/stsb-xlm-r-multilingualによる768次元ベクトル変換
   - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）
-- 今後の拡張: ベクトル検索・類似度計算機能、MCPツールとしての統合
+  - `mcp_server.py`: FastMCPでツールを登録（実装は`src/semche/tools/`へ委譲）
+  - MCPツール: `hello`, `put_document`（テキストをベクトル化してChromaDBに保存・upsert）
+- 今後の拡張: 類似検索ツール（search）、MCPツールの拡充
 
 ### 開発・運用手順
 
-1. MCPサーバーの新規ツール追加は`list_tools()`で定義、`call_tool()`で実装、テストは`tests/`配下に追加。
+1. 新規ツール追加はFastMCPの`@mcp.tool()`で公開し、実装は`src/semche/tools/*.py`に配置。テストは`tests/`配下に追加。
 2. 依存管理は`pyproject.toml`で行い、`uv sync`でインストール。
 3. サーバー起動は`uv run python src/semche/mcp_server.py`。
 4. MCP Inspectorによる対話テストが可能。
@@ -29,10 +31,18 @@
 ```
 /home/pater/semche/
 ├── src/semche/         # サーバー・ツール実装
-│   ├── mcp_server.py          # MCPサーバー本体
-│   ├── embedding.py           # ベクトル埋め込み機能
-│   ├── chromadb_manager.py    # ChromaDB保存管理
-│   └── *.exp.md               # 各モジュールの詳細設計書
+│   ├── mcp_server.py                # MCPサーバー本体（ツール登録のみ）
+│   ├── mcp_server.py.exp.md         # サーバー設計（委譲方針）
+│   ├── tools/                       # ツール実装（サーバーから委譲）
+│   │   ├── __init__.py
+│   │   ├── hello.py                 # helloツール
+│   │   ├── hello.py.exp.md          # helloツール詳細設計
+│   │   ├── document.py              # put_documentツール
+│   │   └── document.py.exp.md       # put_documentツール詳細設計
+│   ├── embedding.py                 # ベクトル埋め込み機能
+│   ├── embedding.py.exp.md          # 埋め込みモジュール詳細設計書
+│   ├── chromadb_manager.py          # ChromaDB保存管理
+│   └── chromadb_manager.py.exp.md   # ChromaDBモジュール詳細設計書
 ├── tests/              # テストコード
 ├── story/              # ストーリー管理（要件・設計・完了記録）
 ├── pyproject.toml      # 依存管理
@@ -42,9 +52,9 @@
 
 ### ツール追加・拡張のポイント
 
-- ツール名・パラメータ・返却値はREADMEのhelloツール例を参考に記載。
+- FastMCPの`@mcp.tool()`で公開し、実装は`src/semche/tools/*.py`に配置。関数のシグネチャは型ヒントとdocstringで定義し、READMEのツール一覧にパラメータ・返却値を追記する。
 - ベクトル埋め込み・検索機能はLangChain/ChromaDBのAPI設計に準拠。
-- 詳細設計書は`.exp.md`形式で各コードファイルと同じ場所に配置。
+- 詳細設計書は`.exp.md`形式で各コードファイルと同じ場所に配置（ツールごとに作成）。
 
 ### テスト・開発運用
 
@@ -76,6 +86,7 @@
 
 - [ ] {必要に応じて実装手順を追加してください}
 - [ ] コア機能の実装が完了している
+- [ ] `CODE_REVIEW_GUIDE.md` に準拠してコードレビューが完了している
 - [ ] テストコードが作成されている
 - [ ] テストが全てパスする
 

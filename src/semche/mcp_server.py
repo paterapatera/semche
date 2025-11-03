@@ -1,15 +1,22 @@
 """MCP Server implementation for Semche.
 
-This module provides a simple MCP server skeleton with a hello tool
-for testing and validation purposes.
+This module hosts the FastMCP server instance and registers tools.
+Actual tool implementations live under src.semche.tools.*
 """
 
 from mcp.server.fastmcp import FastMCP
 
+# Prefer package-relative imports, but fall back when run via `mcp dev` which loads without a package
+try:
+    from .tools import hello as _hello_tool  # type: ignore
+    from .tools import put_document as _put_document_tool  # type: ignore
+except Exception:
+    from tools import hello as _hello_tool  # type: ignore
+    from tools import put_document as _put_document_tool  # type: ignore
+
 
 # Create FastMCP server instance
 mcp = FastMCP("semche")
-
 
 @mcp.tool()
 def hello(name: str = "World") -> str:
@@ -21,4 +28,24 @@ def hello(name: str = "World") -> str:
     Returns:
         Greeting message in the format "Hello, {name}!"
     """
-    return f"Hello, {name}!"
+    return _hello_tool(name=name)
+
+
+@mcp.tool()
+def put_document(
+    text: str,
+    filepath: str,
+    file_type: str = None,
+    normalize: bool = False,
+) -> str:
+    """テキストをベクトル化してChromaDBに保存します（upsert）。
+
+    既存のfilepathがある場合は更新、なければ新規追加します。
+    """
+    return _put_document_tool(
+        text=text,
+        filepath=filepath,
+        file_type=file_type,
+        normalize=normalize,
+    )
+

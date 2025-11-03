@@ -93,6 +93,12 @@ uv run pytest --cov=semche --cov-report=html
 │   └── semche/
 │       ├── __init__.py
 │       ├── mcp_server.py           # MCPサーバー実装
+│       ├── tools/                   # ツール実装（サーバーから委譲）
+│       │   ├── __init__.py
+│       │   ├── hello.py             # helloツール
+│       │   ├── hello.py.exp.md      # helloツール詳細設計
+│       │   ├── document.py          # put_documentツール
+│       │   └── document.py.exp.md   # put_documentツール詳細設計
 │       ├── embedding.py            # テキスト埋め込み機能
 │       ├── embedding.py.exp.md     # 埋め込みモジュール詳細設計書
 │       ├── chromadb_manager.py     # ChromaDBストレージマネージャー
@@ -140,6 +146,62 @@ uv run pytest --cov=semche --cov-report=html
 Hello, Alice!
 ```
 
+### put_document
+
+テキストをベクトル化してChromaDBに保存します（upsert）。同じfilepathで呼び出すと既存ドキュメントを更新します。
+
+**パラメータ:**
+
+- `text` (string, 必須): 登録するテキスト
+- `filepath` (string, 必須): ドキュメントの識別子となるファイルパス
+- `file_type` (string, オプション): ファイルタイプ（例: "spec", "jira", "design"）
+- `normalize` (boolean, オプション): ベクトル正規化を行うか（デフォルト: false）
+
+**返却値:**
+
+- JSON形式の結果メッセージ（成功時は詳細情報、失敗時はエラー情報）
+
+**例:**
+
+```json
+{
+  "name": "put_document",
+  "arguments": {
+    "text": "これは仕様書のサンプルテキストです。",
+    "filepath": "/docs/spec.md",
+    "file_type": "spec",
+    "normalize": false
+  }
+}
+```
+
+**レスポンス（成功時）:**
+
+```json
+{
+  "status": "success",
+  "message": "ドキュメントを登録しました",
+  "details": {
+    "count": 1,
+    "collection": "documents",
+    "filepath": "/docs/spec.md",
+    "vector_dimension": 768,
+    "persist_directory": "./chroma_db",
+    "normalized": false
+  }
+}
+```
+
+**レスポンス（エラー時）:**
+
+```json
+{
+  "status": "error",
+  "message": "テキストが空です",
+  "error_type": "ValidationError"
+}
+```
+
 ## コアモジュール
 
 ### Embedder (embedding.py)
@@ -176,9 +238,9 @@ result = mgr.save(
 
 新しいツールを追加するには:
 
-1. `list_tools()`関数にツール定義を追加
-2. `call_tool()`関数にツールロジックを実装
-3. `tests/test_mcp_server.py`にテストを追加
+1. `src/semche/tools/` に新規ファイルを追加し、FastMCPの `@mcp.tool()` で公開
+2. 型ヒントとdocstringを整備し、READMEのツール一覧にパラメータ・返却値を追記
+3. `tests/test_mcp_server.py` にテストを追加
 
 ### 今後の拡張予定
 
