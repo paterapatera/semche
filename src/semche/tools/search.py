@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 from ..chromadb_manager import ChromaDBError, ChromaDBManager
-from ..embedding import Embedder, EmbeddingError
+from ..embedding import Embedder, EmbeddingError, ensure_single_vector
 
 # Module-level singletons (lazy init)
 _embedder: Optional[Embedder] = None
@@ -58,6 +58,7 @@ def search(
         # クエリ埋め込み
         embedder = _get_embedder()
         qvec = embedder.addDocument(query, normalize=normalize)
+        query_vec = ensure_single_vector(qvec)
 
         # メタデータフィルタ
         where = {}
@@ -65,7 +66,12 @@ def search(
             where["file_type"] = file_type
 
         chroma = _get_chromadb_manager()
-        raw = chroma.query(query_embeddings=[qvec], top_k=top_k, where=where, include_documents=include_documents)
+        raw = chroma.query(
+            query_embeddings=[query_vec],
+            top_k=top_k,
+            where=where,
+            include_documents=include_documents
+        )
 
         # 追加フィルタ（prefix, min_score）
         results = raw.get("results", [])
@@ -95,7 +101,7 @@ def search(
             "message": "検索が完了しました",
             "results": filtered,
             "count": len(filtered),
-            "query_vector_dimension": len(qvec) if isinstance(qvec, list) else None,
+            "query_vector_dimension": len(query_vec) if isinstance(query_vec, list) else None,
             "persist_directory": raw.get("persist_directory"),
         }
 

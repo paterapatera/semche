@@ -4,10 +4,37 @@ from typing import List, Union
 try:
     from langchain_huggingface import HuggingFaceEmbeddings
 except ImportError:
-    HuggingFaceEmbeddings = None
+    HuggingFaceEmbeddings = None  # type: ignore[misc] # Optional dependency
+
 
 class EmbeddingError(Exception):
     pass
+
+
+def ensure_single_vector(embedding: Union[List[float], List[List[float]]]) -> List[float]:
+    """埋め込み結果を単一ベクトル形式に正規化する。
+
+    addDocument()の戻り値は単一テキストの場合List[float]、
+    バッチの場合List[List[float]]になる可能性があるため、
+    常に単一ベクトルを返すように正規化する。
+
+    Args:
+        embedding: 埋め込みベクトル（単一またはバッチ）
+
+    Returns:
+        単一の埋め込みベクトル
+
+    Raises:
+        EmbeddingError: 不正な形式の場合
+    """
+    if isinstance(embedding, list) and len(embedding) > 0:
+        if isinstance(embedding[0], list):
+            # バッチ処理の結果: 最初の要素を返す
+            return embedding[0]
+        elif isinstance(embedding[0], (int, float)):
+            # 単一ベクトル: そのまま返す
+            return embedding  # type: ignore[return-value] # List[float]として安全
+    raise EmbeddingError("不正な埋め込み形式です")
 
 class Embedder:
     def __init__(self, model_name: str = "sentence-transformers/stsb-xlm-r-multilingual"):

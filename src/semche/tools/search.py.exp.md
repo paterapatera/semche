@@ -15,6 +15,8 @@
 ## 利用クラス・ライブラリ（ファイルパス一覧）
 
 - `Embedder` / `EmbeddingError`: `/home/pater/semche/src/semche/embedding.py`
+- `ensure_single_vector`: `/home/pater/semche/src/semche/embedding.py`
+  - 用途: クエリの埋め込み結果を単一ベクトル形式（`List[float]`）に統一
 - `ChromaDBManager` / `ChromaDBError`: `/home/pater/semche/src/semche/chromadb_manager.py`
 - 標準ライブラリ: `datetime`（現状は未使用、拡張用）
 
@@ -41,13 +43,20 @@
 search(...)
   ├─ バリデーション（query, top_k, min_score）
   ├─ qvec = Embedder.addDocument(query, normalize)
+  ├─ query_vec = ensure_single_vector(qvec)  # 単一ベクトルに正規化
   ├─ where = {file_type?}
-  ├─ raw = ChromaDBManager.query([qvec], top_k, where, include_documents)
+  ├─ raw = ChromaDBManager.query([query_vec], top_k, where, include_documents)
   ├─ results = raw["results"] を prefix/min_score でフィルタ
   ├─ document を最大500文字に制限（include_documents=True時）
   ├─ score 降順ソート
   └─ dict で返却
 ```
+
+**変更点（v0.2.0）**:
+
+- `ensure_single_vector()`を使用して、クエリの埋め込み結果を明示的に単一ベクトルに変換
+- コードの重複を削減（以前は型チェックロジックがインライン実装）
+- 型安全性の向上
 
 ## エラー仕様
 
@@ -61,6 +70,23 @@ search(...)
 - `top_k` は適切な上限を設けることを推奨（例: 50）
 - document プレビューは最大500文字に制限
 - 将来的に `where_document` や前処理キャッシュの導入余地あり
+
+## 変更履歴
+
+### v0.2.0 (2025-11-03)
+
+- **改善**: `ensure_single_vector()`ヘルパー関数を使用
+  - クエリの埋め込み結果を明示的に単一ベクトルに変換
+  - コードの重複削減（約10行削減）
+  - 型安全性の向上
+- **改善**: インポートに`ensure_single_vector`を追加
+
+### v0.1.0 (初回リリース)
+
+- **実装**: `search()`関数の基本機能
+- **実装**: セマンティック検索
+- **実装**: フィルタリング機能（file_type, filepath_prefix, min_score）
+- **実装**: エラーハンドリング
 
 ## 備考
 

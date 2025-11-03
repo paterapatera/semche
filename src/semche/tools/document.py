@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from ..chromadb_manager import ChromaDBError, ChromaDBManager
-from ..embedding import Embedder, EmbeddingError
+from ..embedding import Embedder, EmbeddingError, ensure_single_vector
 
 # Module-level singletons (lazy init)
 _embedder: Optional[Embedder] = None
@@ -52,12 +52,13 @@ def put_document(
         # ベクトル化
         embedder = _get_embedder()
         embedding = embedder.addDocument(text, normalize=normalize)
+        embedding_vec = ensure_single_vector(embedding)
 
         # ChromaDBに保存
         chromadb_manager = _get_chromadb_manager()
         now = datetime.now().isoformat()
         result = chromadb_manager.save(
-            embeddings=[embedding],
+            embeddings=[embedding_vec],
             documents=[text],
             filepaths=[filepath],
             updated_at=[now],
@@ -71,7 +72,7 @@ def put_document(
                 "count": result["count"],
                 "collection": result["collection"],
                 "filepath": filepath,
-                "vector_dimension": len(embedding),
+                "vector_dimension": len(embedding_vec),
                 "persist_directory": result["persist_directory"],
                 "normalized": normalize,
             },

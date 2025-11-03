@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Union
 
 try:
     import chromadb
@@ -78,11 +78,11 @@ class ChromaDBManager:
         filepaths: Sequence[str],
         updated_at: Optional[Sequence[Optional[Union[str, datetime]]]] = None,
         file_types: Optional[Sequence[Optional[str]]] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, Union[str, None]]]:
         n = len(filepaths)
-        metas: List[Dict[str, Any]] = []
+        metas: List[Dict[str, Union[str, None]]] = []
         for i in range(n):
-            md: Dict[str, Any] = {"filepath": filepaths[i]}
+            md: Dict[str, Union[str, None]] = {"filepath": filepaths[i]}
             if updated_at is not None:
                 md["updated_at"] = self._to_iso8601(updated_at[i]) if i < len(updated_at) else None
             if file_types is not None:
@@ -129,7 +129,7 @@ class ChromaDBManager:
                 self.collection.upsert(
                     ids=list(filepaths),
                     embeddings=list(embeddings),
-                    metadatas=metadatas,
+                    metadatas=metadatas,  # type: ignore[arg-type] # ChromaDBの型定義が厳格すぎるため
                     documents=list(documents),
                 )
             else:
@@ -138,7 +138,7 @@ class ChromaDBManager:
                     self.collection.add(
                         ids=list(filepaths),
                         embeddings=list(embeddings),
-                        metadatas=metadatas,
+                        metadatas=metadatas,  # type: ignore[arg-type] # ChromaDBの型定義が厳格すぎるため
                         documents=list(documents),
                     )
                 except Exception:
@@ -146,7 +146,7 @@ class ChromaDBManager:
                     self.collection.update(
                         ids=list(filepaths),
                         embeddings=list(embeddings),
-                        metadatas=metadatas,
+                        metadatas=metadatas,  # type: ignore[arg-type] # ChromaDBの型定義が厳格すぎるため
                         documents=list(documents),
                     )
 
@@ -165,7 +165,8 @@ class ChromaDBManager:
 
     def get_by_ids(self, ids: Sequence[str]) -> Dict[str, Any]:
         try:
-            return self.collection.get(ids=list(ids))
+            result = self.collection.get(ids=list(ids))
+            return dict(result)
         except Exception as e:
             logging.error(f"ChromaDB取得に失敗: {e}")
             raise ChromaDBError(f"ChromaDB取得に失敗: {e}")
@@ -183,7 +184,9 @@ class ChromaDBManager:
         1件のクエリを想定（query_embeddings[0]）。
         """
         try:
-            include_fields = ["metadatas", "distances"]
+            include_fields: List[Literal["documents", "embeddings", "metadatas", "distances", "uris", "data"]] = [
+                "metadatas", "distances"
+            ]
             if include_documents:
                 include_fields.append("documents")
 

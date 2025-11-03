@@ -17,6 +17,9 @@
   - 実装ファイル: `/home/pater/semche/src/semche/embedding.py`
 - `EmbeddingError`（埋め込み時の例外）
   - 実装ファイル: `/home/pater/semche/src/semche/embedding.py`
+- `ensure_single_vector`（埋め込み結果の正規化）
+  - 実装ファイル: `/home/pater/semche/src/semche/embedding.py`
+  - 用途: 埋め込み結果を単一ベクトル形式（`List[float]`）に統一
 - `ChromaDBManager`（ChromaDB 永続化管理）
   - 実装ファイル: `/home/pater/semche/src/semche/chromadb_manager.py`
 - `ChromaDBError`（ChromaDB 操作時の例外）
@@ -56,10 +59,11 @@ put_document(text, filepath, file_type, normalize)
   ├─ 入力バリデーション（text, filepath の空チェック）
   ├─ embedder = _get_embedder()  # 遅延初期化
   ├─ embedding = embedder.addDocument(text, normalize)
+  ├─ embedding_vec = ensure_single_vector(embedding)  # 単一ベクトルに正規化
   ├─ chroma = _get_chromadb_manager()  # 遅延初期化
   ├─ now = datetime.now().isoformat()
   ├─ result = chroma.save(
-  │     embeddings=[embedding],
+  │     embeddings=[embedding_vec],
   │     documents=[text],
   │     filepaths=[filepath],
   │     updated_at=[now],
@@ -67,6 +71,12 @@ put_document(text, filepath, file_type, normalize)
   │  )
   └─ 辞書を生成して返却
 ```
+
+**変更点（v0.2.0）**:
+
+- `ensure_single_vector()`を使用して、埋め込み結果を明示的に単一ベクトルに変換
+- コードの重複を削減（以前は型チェックロジックがインライン実装）
+- 型安全性の向上
 
 ## エラー仕様
 
@@ -90,6 +100,23 @@ put_document(text, filepath, file_type, normalize)
 - 機密情報のメタデータ保存を避けることを推奨
 - 大きすぎるテキストの取り扱いは将来の要件に応じて制限可能
 
+## 変更履歴
+
+### v0.2.0 (2025-11-03)
+
+- **改善**: `ensure_single_vector()`ヘルパー関数を使用
+  - 埋め込み結果を明示的に単一ベクトルに変換
+  - コードの重複削減（約10行削減）
+  - 型安全性の向上
+- **改善**: インポートに`ensure_single_vector`を追加
+
+### v0.1.0 (初回リリース)
+
+- **実装**: `put_document()`関数の基本機能
+- **実装**: 入力バリデーション
+- **実装**: モジュールレベルシングルトン
+- **実装**: エラーハンドリング
+
 ## テスト
 
 - `tests/test_mcp_server.py` にて以下を検証
@@ -99,6 +126,6 @@ put_document(text, filepath, file_type, normalize)
 
 ## 参考/関連
 
-- `src/semche/embedding.py`（Embedder 実装）
+- `src/semche/embedding.py`（Embedder, ensure_single_vector 実装）
 - `src/semche/chromadb_manager.py`（ChromaDBManager 実装）
 - `src/semche/mcp_server.py`（FastMCP 登録側）

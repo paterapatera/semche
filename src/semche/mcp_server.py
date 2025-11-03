@@ -36,6 +36,7 @@ def put_document(
     """テキストをベクトル化してChromaDBに保存します（upsert）。
 
     既存のfilepathがある場合は更新、なければ新規追加します。
+    filepathにはURLも指定可能です。
     """
     return _put_document_tool(
         text=text,

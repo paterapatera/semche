@@ -17,7 +17,28 @@
 - `chromadb.config.Settings`
   - 用途: テレメトリ設定（anonymized_telemetry=False）
 - 標準ライブラリ
-  - `os`, `logging`, `datetime`, `typing`
+  - `os`, `logging`, `datetime`, `typing` (Any, Dict, List, Literal, Optional, Sequence, Union)
+
+## 型アノテーション・型チェック対応
+
+### type ignoreコメントの使用
+
+本モジュールでは、ChromaDBライブラリの型定義との互換性のため、以下の箇所で`# type: ignore`を使用しています：
+
+```python
+metadatas=metadatas,  # type: ignore[arg-type] # ChromaDBの型定義が厳格すぎるため
+```
+
+**理由**: ChromaDBの`Collection.upsert()`, `Collection.add()`, `Collection.update()`のメタデータ型定義が厳格で、実用的な`Dict[str, Union[str, None]]`型を受け付けないため、型チェックを抑制しています。実行時には問題なく動作します。
+
+### 型定義の改善
+
+- `_build_metadatas()`の戻り値型を`List[Dict[str, Union[str, None]]]`に明示
+- `query()`の`include`パラメータにLiteral型を使用して、ChromaDBが受け付ける値を厳密に定義：
+  ```python
+  include_fields: List[Literal["documents", "embeddings", "metadatas", "distances", "uris", "data"]]
+  ```
+- Literal型のインポートを追加（Python 3.8+）
 
 ## クラス設計
 
@@ -101,6 +122,25 @@ print(res)
 - メタデータは必要なキーのみ設定
 - 距離関数は`cosine`（用途により`l2`/`ip`へ変更可）
 - モデルの次元数はChroma側で固定検証しないため、呼び出し側で一貫性を担保する
+
+## 変更履歴
+
+### v0.2.0 (2025-11-03)
+
+- **改善**: 型アノテーションの精度向上
+  - `_build_metadatas()`の戻り値型を`List[Dict[str, Union[str, None]]]`に明示
+  - `query()`の`include`パラメータにLiteral型を使用
+- **改善**: type ignoreコメントの標準化
+  - エラーコード`[arg-type]`を明示
+  - ChromaDBの型定義との互換性問題を説明
+- **追加**: Literal型のインポート
+
+### v0.1.0 (初回リリース)
+
+- **実装**: ChromaDBManagerクラスの基本機能
+- **実装**: upsert対応の保存機能
+- **実装**: メタデータ管理（filepath, updated_at, file_type）
+- **実装**: 永続化ディレクトリの柔軟な設定
 
 ## 参考
 
