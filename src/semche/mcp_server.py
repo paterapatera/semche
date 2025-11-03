@@ -6,6 +6,7 @@ Actual tool implementations live under src.semche.tools.*
 
 from mcp.server.fastmcp import FastMCP
 
+from semche.tools.delete import delete_document as _delete_document_tool
 from semche.tools.document import put_document as _put_document_tool
 from semche.tools.hello import hello as _hello_tool
 from semche.tools.search import search as _search_tool
@@ -66,4 +67,13 @@ def search(
         min_score=min_score,
         include_documents=include_documents,
     )
+
+
+@mcp.tool()
+def delete_document(filepath: str) -> dict:
+    """指定したfilepath(ID)のドキュメントを削除します。
+
+    存在しない場合もエラーにはせずdeleted_count=0で返します。
+    """
+    return _delete_document_tool(filepath=filepath)
 

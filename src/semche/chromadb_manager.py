@@ -171,6 +171,35 @@ class ChromaDBManager:
             logging.error(f"ChromaDB取得に失敗: {e}")
             raise ChromaDBError(f"ChromaDB取得に失敗: {e}")
 
+    def delete(self, ids: Sequence[str]) -> Dict[str, Any]:
+        """指定したIDのドキュメントを削除する。
+
+        戻り値には削除件数（推定）を含む。Chromaのdeleteは件数を返さないため、
+        事前にget()で存在確認して件数をカウントする。
+        """
+        try:
+            ids_list = list(ids)
+            # 事前に存在件数を確認
+            before = self.get_by_ids(ids_list)
+            existing_ids = set(before.get("ids", []))
+            to_delete = [i for i in ids_list if i in existing_ids]
+
+            # 削除実行（存在しないIDが混じっていても問題なし）
+            self.collection.delete(ids=ids_list)
+
+            return {
+                "status": "success",
+                "collection": self.collection_name,
+                "persist_directory": self.persist_directory,
+                "deleted_count": len(to_delete),
+                "ids": ids_list,
+            }
+        except ChromaDBError:
+            raise
+        except Exception as e:
+            logging.error(f"ChromaDB削除に失敗: {e}")
+            raise ChromaDBError(f"ChromaDB削除に失敗: {e}")
+
     def query(
         self,
         query_embeddings: Sequence[Sequence[float]],
@@ -198,14 +227,17 @@ class ChromaDBManager:
             )
 
             # Chroma の返却は各フィールドが [ [ ... ] ] の二重配列（クエリ毎）
-            # ids は include に指定せずとも返る場合があるが、互換性のため存在チェックのみ
             ids = (res.get("ids") or [[]])[0]
             metadatas = (res.get("metadatas") or [[]])[0]
             distances = (res.get("distances") or [[]])[0]
             documents = (res.get("documents") or [[]])[0] if include_documents else []
 
+            # ids が返らない環境でも動作するよう、最長の長さで合わせる
+            length = max(len(metadatas), len(distances), len(documents), len(ids))
+
             items: List[Dict[str, Any]] = []
-            for i, _id in enumerate(ids):
+            for i in range(length):
+                _id = ids[i] if i < len(ids) else None
                 md = metadatas[i] if i < len(metadatas) else {}
                 dist = distances[i] if i < len(distances) else None
                 # cosine 距離を類似度に変換（距離がない場合は None）

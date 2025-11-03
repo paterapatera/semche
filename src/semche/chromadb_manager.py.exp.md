@@ -53,6 +53,7 @@ class ChromaDBManager:
     def __init__(self, persist_directory: str | None = None, collection_name: str = "documents", distance: str = "cosine")
     def save(self, embeddings, documents, filepaths, updated_at=None, file_types=None) -> dict
     def get_by_ids(self, ids) -> dict
+  def delete(self, ids) -> dict
 ```
 
 #### 初期化
@@ -89,6 +90,16 @@ class ChromaDBManager:
 - 目的: 保存済みデータの取得（テストや検証用途）
 - 実装: `collection.get(ids=[...])`
 
+#### delete()
+
+- 目的: 指定したID群のドキュメントを削除
+- 実装方針:
+  - Chromaの`delete()`は削除件数を返さないため、事前に`get_by_ids()`で存在IDを特定し、推定削除件数（`deleted_count`）を算出
+  - その後に`collection.delete(ids=...)`を実行
+- 返却値例:
+  - `{status: "success", collection: "documents", persist_directory: "./chroma_db", deleted_count: n, ids: [...]}`
+- エラー時は `ChromaDBError` を送出
+
 ## 入出力例
 
 ```python
@@ -124,6 +135,12 @@ print(res)
 - モデルの次元数はChroma側で固定検証しないため、呼び出し側で一貫性を担保する
 
 ## 変更履歴
+
+### v0.2.1 (2025-11-03)
+
+- **追加**: `delete()` メソッドを追加
+  - 事前存在確認に基づく`deleted_count`の算出
+  - `collection.delete(ids=...)` による削除実行
 
 ### v0.2.0 (2025-11-03)
 

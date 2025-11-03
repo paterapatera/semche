@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional
 
 from ..chromadb_manager import ChromaDBError, ChromaDBManager
 from ..embedding import Embedder, EmbeddingError, ensure_single_vector
+from .document import _get_chromadb_manager  # reuse the same singleton
 
 # Module-level singletons (lazy init)
 _embedder: Optional[Embedder] = None
@@ -15,11 +16,7 @@ def _get_embedder() -> Embedder:
     return _embedder
 
 
-def _get_chromadb_manager() -> ChromaDBManager:
-    global _chromadb_manager
-    if _chromadb_manager is None:
-        _chromadb_manager = ChromaDBManager()
-    return _chromadb_manager
+# _get_chromadb_manager is imported from document.py to share the same instance
 
 
 def search(

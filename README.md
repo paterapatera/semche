@@ -142,16 +142,22 @@ uv run mypy src/semche/mcp_server.py
 │       │   ├── document.py          # put_documentツール
 │       │   ├── document.py.exp.md   # put_documentツール詳細設計
 │       │   ├── search.py            # searchツール
-│       │   └── search.py.exp.md     # searchツール詳細設計
+│       │   ├── search.py.exp.md     # searchツール詳細設計
+│       │   ├── delete.py            # delete_documentツール
+│       │   └── delete.py.exp.md     # delete_documentツール詳細設計
 │       ├── embedding.py            # テキスト埋め込み機能
 │       ├── embedding.py.exp.md     # 埋め込みモジュール詳細設計書
 │       ├── chromadb_manager.py     # ChromaDBストレージマネージャー
 │       └── chromadb_manager.py.exp.md  # ChromaDBモジュール詳細設計書
 ├── tests/
 │   ├── __init__.py
+│   ├── conftest.py               # テスト分離のための環境変数設定
 │   ├── test_mcp_server.py          # MCPサーバーのテスト
 │   ├── test_embedding.py           # 埋め込み機能のテスト
-│   └── test_chromadb_manager.py    # ChromaDBマネージャーのテスト
+│   ├── test_chromadb_manager.py    # ChromaDBマネージャーのテスト
+│   ├── test_search.py              # 検索ツールのテスト
+│   ├── test_embedding_helper.py    # ヘルパー関数のテスト
+│   └── test_delete.py              # 削除ツールのテスト
 ├── story/                          # 機能ストーリーと要件
 ├── pyproject.toml                  # プロジェクト設定
 ├── README.md                       # このファイル
@@ -294,6 +300,58 @@ Hello, Alice!
   ],
   "count": 1,
   "query_vector_dimension": 768,
+  "persist_directory": "./chroma_db"
+}
+```
+
+### delete_document
+
+指定した`filepath`（ID）のドキュメントを削除します。存在しないIDが指定された場合はエラーにせず、`deleted_count=0`として成功レスポンスを返します。
+
+**パラメータ:**
+
+- `filepath` (string, 必須): 削除対象のID（パス）
+
+**返却値:**
+
+- 辞書（dict）形式の結果
+  - 成功（削除あり）: `{status: "success", message: "ドキュメントを削除しました", deleted_count: 1, filepath, collection, persist_directory}`
+  - 成功（該当なし）: `{status: "success", message: "削除対象が見つかりませんでした", deleted_count: 0, filepath, collection, persist_directory}`
+  - 失敗: `{status: "error", message, error_type}`
+
+**例:**
+
+```json
+{
+  "name": "delete_document",
+  "arguments": {
+    "filepath": "/docs/spec.md"
+  }
+}
+```
+
+**レスポンス（成功: 削除あり）:**
+
+```json
+{
+  "status": "success",
+  "message": "ドキュメントを削除しました",
+  "deleted_count": 1,
+  "filepath": "/docs/spec.md",
+  "collection": "documents",
+  "persist_directory": "./chroma_db"
+}
+```
+
+**レスポンス（成功: 該当なし）:**
+
+```json
+{
+  "status": "success",
+  "message": "削除対象が見つかりませんでした",
+  "deleted_count": 0,
+  "filepath": "/docs/not_found.md",
+  "collection": "documents",
   "persist_directory": "./chroma_db"
 }
 ```

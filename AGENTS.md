@@ -12,11 +12,11 @@
 
 - 本プロジェクトはLangChainとChromaDBによるベクトル検索機能を目指すMCPサーバー実装です。
 - 実装済み機能:
-  - `embedding.py`: sentence-transformers/stsb-xlm-r-multilingualによる768次元ベクトル変換
-  - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）
+  - `embedding.py`: sentence-transformers/stsb-xlm-r-multilingualによる768次元ベクトル変換（ヘルパー`ensure_single_vector()`を提供）
+  - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）、検索（query）、取得（get）、削除（delete）
   - `mcp_server.py`: FastMCPでツールを登録（実装は`src/semche/tools/`へ委譲）
-  - MCPツール: `hello`, `put_document`, `search`（セマンティック検索）
-- 今後の拡張: 類似検索ツール（search）、MCPツールの拡充
+  - MCPツール: `hello`, `put_document`, `search`（セマンティック検索）, `delete_document`（単一ID削除）
+- 今後の拡張: バッチ削除・条件削除、ツールの拡充、パフォーマンス最適化
 
 ### 開発・運用手順
 
@@ -41,12 +41,19 @@
 │   │   ├── document.py              # put_documentツール
 │   │   ├── document.py.exp.md       # put_documentツール詳細設計
 │   │   ├── search.py                # searchツール
-│   │   └── search.py.exp.md         # searchツール詳細設計
+│   │   ├── search.py.exp.md         # searchツール詳細設計
+│   │   ├── delete.py                # delete_documentツール
+│   │   └── delete.py.exp.md         # delete_documentツール詳細設計
 │   ├── embedding.py                 # ベクトル埋め込み機能
 │   ├── embedding.py.exp.md          # 埋め込みモジュール詳細設計書
 │   ├── chromadb_manager.py          # ChromaDB保存管理
 │   └── chromadb_manager.py.exp.md   # ChromaDBモジュール詳細設計書
 ├── tests/              # テストコード
+│   ├── conftest.py                   # テスト分離（SEMCHE_CHROMA_DIRを一時ディレクトリに）
+│   ├── test_delete.py                # 削除ツールのテスト
+│   ├── test_search.py                # 検索ツールのテスト
+│   ├── test_embedding_helper.py      # ensure_single_vectorのテスト
+│   └── ...
 ├── story/              # ストーリー管理（要件・設計・完了記録）
 ├── pyproject.toml      # 依存管理
 ├── README.md           # プロジェクト概要
@@ -67,6 +74,7 @@
 - Lintはruff（`uv run ruff check .`）で実行、自動修正は`--fix`オプション付与。
 - 型チェックはmypy（`uv run mypy src/semche`）で実行。
 - 依存追加時は`uv sync`で反映。
+- テスト分離: `tests/conftest.py` にて `SEMCHE_CHROMA_DIR` をテストごとに一意の一時ディレクトリへ設定（テスト間のDB汚染を防止）。
 
 ---
 
@@ -95,6 +103,8 @@
 - [ ] `CODE_REVIEW_GUIDE.md` に準拠してコードレビューが完了している
 - [ ] テストコードが作成されている
 - [ ] テストが全てパスする
+- [ ] Lint（ruff）/ 型チェック（mypy）が通る
+- [ ] README.md と詳細設計書（`.exp.md`）を更新済み（ツール一覧・引数/返却仕様）
 
 ### Phase 3: 確認・ドキュメント【対話フェーズ - ユーザー確認必須】
 
