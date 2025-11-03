@@ -25,6 +25,7 @@
 3. サーバー起動は`uv run python src/semche/mcp_server.py`。
 4. MCP Inspectorによる対話テストが可能（`uv run mcp dev src/semche/mcp_server.py`）。
 5. テストは`uv run pytest`で実行。
+6. コード品質チェックは`uv run ruff check .`（Lint）と`uv run mypy src/semche`（型チェック）で実行。
 
 ### プロジェクト構成例
 
@@ -63,6 +64,8 @@
 
 - MCP Inspectorで対話テスト可能。
 - pytestで自動テスト・カバレッジ計測。
+- Lintはruff（`uv run ruff check .`）で実行、自動修正は`--fix`オプション付与。
+- 型チェックはmypy（`uv run mypy src/semche`）で実行。
 - 依存追加時は`uv sync`で反映。
 
 ---

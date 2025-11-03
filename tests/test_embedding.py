@@ -1,5 +1,7 @@
 import pytest
+
 from src.semche.embedding import Embedder, EmbeddingError
+
 
 @pytest.fixture(scope="module")
 def embedder():

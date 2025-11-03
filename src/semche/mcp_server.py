@@ -6,10 +6,9 @@ Actual tool implementations live under src.semche.tools.*
 
 from mcp.server.fastmcp import FastMCP
 
-from semche.tools.hello import hello as _hello_tool
 from semche.tools.document import put_document as _put_document_tool
+from semche.tools.hello import hello as _hello_tool
 from semche.tools.search import search as _search_tool
-
 
 # Create FastMCP server instance
 mcp = FastMCP("semche")

@@ -1,8 +1,9 @@
 import os
 from datetime import datetime
+
 import pytest
 
-from src.semche.chromadb_manager import ChromaDBManager, ChromaDBError
+from src.semche.chromadb_manager import ChromaDBError, ChromaDBManager
 
 
 def test_init_and_persist_dir(tmp_path):

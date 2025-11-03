@@ -1,4 +1,3 @@
-import pytest
 
 from semche.mcp_server import put_document, search
 

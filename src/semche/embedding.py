@@ -20,7 +20,9 @@ class Embedder:
             logging.error(f"モデルのロードに失敗しました: {e}")
             raise EmbeddingError(f"モデルのロードに失敗しました: {e}")
 
-    def addDocument(self, text: Union[str, List[str]], normalize: bool = False) -> Union[List[float], List[List[float]]]:
+    def addDocument(
+        self, text: Union[str, List[str]], normalize: bool = False
+    ) -> Union[List[float], List[List[float]]]:
         if text is None or (isinstance(text, str) and text.strip() == "") or (isinstance(text, list) and not text):
             logging.error("空文字列または空リストが入力されました。")
             raise EmbeddingError("空文字列または空リストが入力されました。")

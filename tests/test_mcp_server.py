@@ -1,9 +1,7 @@
 """Tests for MCP server functionality."""
 
-import json
-import pytest
 
-from semche.mcp_server import mcp, hello, put_document
+from semche.mcp_server import hello, mcp, put_document
 
 
 def test_mcp_server_exists():

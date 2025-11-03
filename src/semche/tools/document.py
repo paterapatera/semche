@@ -1,9 +1,8 @@
-import json
 from datetime import datetime
 from typing import Optional
 
+from ..chromadb_manager import ChromaDBError, ChromaDBManager
 from ..embedding import Embedder, EmbeddingError
-from ..chromadb_manager import ChromaDBManager, ChromaDBError
 
 # Module-level singletons (lazy init)
 _embedder: Optional[Embedder] = None

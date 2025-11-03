@@ -1,12 +1,12 @@
-import os
 import logging
-from typing import List, Optional, Sequence, Dict, Any, Union
+import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 try:
     import chromadb
     from chromadb.config import Settings
-except ImportError as e:
+except ImportError:
     chromadb = None
 
 

@@ -85,6 +85,48 @@ uv run pytest
 uv run pytest --cov=semche --cov-report=html
 ```
 
+### コード品質チェック
+
+#### Lint（Ruff）
+
+ruffを使ってコードスタイルとインポート順序をチェック:
+
+```bash
+uv run ruff check .
+```
+
+自動修正可能な問題を修正:
+
+```bash
+uv run ruff check --fix .
+```
+
+フォーマットをチェック:
+
+```bash
+uv run ruff format --check .
+```
+
+自動フォーマット:
+
+```bash
+uv run ruff format .
+```
+
+#### 型チェック（mypy）
+
+mypyを使って型アノテーションをチェック:
+
+```bash
+uv run mypy src/semche
+```
+
+特定のファイルをチェック:
+
+```bash
+uv run mypy src/semche/mcp_server.py
+```
+
 ## プロジェクト構成
 
 ```
