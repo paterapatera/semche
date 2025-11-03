@@ -15,7 +15,10 @@
   - `embedding.py`: sentence-transformers/stsb-xlm-r-multilingualによる768次元ベクトル変換（ヘルパー`ensure_single_vector()`を提供）
   - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）、検索（query）、取得（get）、削除（delete）
   - `mcp_server.py`: FastMCPでツールを登録（実装は`src/semche/tools/`へ委譲）
-  - MCPツール: `put_document`, `search`（セマンティック検索）, `delete_document`（単一ID削除）
+  - MCPツール:
+    - `put_document`: ドキュメント登録
+    - `search`: セマンティック検索（v0.3.0より簡素化: 必須パラメータは`query`のみ、オプションは`top_k`/`file_type`/`include_documents`）
+    - `delete_document`: 単一ID削除
   - CLIツール: `doc-update`（一括ドキュメント登録）
     - ワイルドカード対応、日付フィルタ、ignoreパターン、IDプレフィックス
     - **デフォルト: 絶対パスでID生成**（v0.2.0より）

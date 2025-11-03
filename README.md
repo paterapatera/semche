@@ -322,9 +322,6 @@ uv run mypy src/semche/mcp_server.py
 - `query` (string, 必須): 検索クエリ
 - `top_k` (number, オプション): 取得件数（デフォルト: 5）
 - `file_type` (string, オプション): メタデータの file_type でフィルタ
-- `filepath_prefix` (string, オプション): 取得後にパスの接頭辞でフィルタ
-- `normalize` (boolean, オプション): クエリベクトルの正規化（デフォルト: false）
-- `min_score` (number, オプション): 類似度の下限（0.0〜1.0）
 - `include_documents` (boolean, オプション): 本文プレビューを含める（デフォルト: true）
 
 **返却値:**

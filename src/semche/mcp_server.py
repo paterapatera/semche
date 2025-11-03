@@ -45,9 +45,6 @@ def search(
     query: str,
     top_k: int = 5,
     file_type: str | None = None,
-    filepath_prefix: str | None = None,
-    normalize: bool = False,
-    min_score: float | None = None,
     include_documents: bool = True,
 ) -> dict:
     """セマンティック検索（ChromaDB）。
@@ -56,18 +53,12 @@ def search(
         query: 検索クエリ文字列
         top_k: 取得する上位k件の数（デフォルト5）
         file_type: メタデータのfile_typeでフィルタ（任意）
-        filepath_prefix: filepathの接頭辞でフィルタ（任意）
-        normalize: 埋め込みベクトルを正規化するか（デフォルトFalse）
-        min_score: 最小類似度スコアでフィルタ（0.0〜1.0の範囲、任意）
         include_documents: ドキュメント内容を結果に含めるか（デフォルトTrue）
     """
     return _search_tool(
         query=query,
         top_k=top_k,
         file_type=file_type,
-        filepath_prefix=filepath_prefix,
-        normalize=normalize,
-        min_score=min_score,
         include_documents=include_documents,
     )
 

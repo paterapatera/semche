@@ -23,9 +23,6 @@ def search(
     query: str,
     top_k: int = 5,
     file_type: Optional[str] = None,
-    filepath_prefix: Optional[str] = None,
-    normalize: bool = False,
-    min_score: Optional[float] = None,
     include_documents: bool = True,
 ) -> Dict[str, Any]:
     """クエリでセマンティック検索を行う（ChromaDB）。
@@ -45,16 +42,10 @@ def search(
                 "message": "top_k は 1 以上である必要があります",
                 "error_type": "ValidationError",
             }
-        if min_score is not None and not (0.0 <= min_score <= 1.0):
-            return {
-                "status": "error",
-                "message": "min_score は 0.0〜1.0 の範囲で指定してください",
-                "error_type": "ValidationError",
-            }
 
         # クエリ埋め込み
         embedder = _get_embedder()
-        qvec = embedder.addDocument(query, normalize=normalize)
+        qvec = embedder.addDocument(query)
         query_vec = ensure_single_vector(qvec)
 
         # メタデータフィルタ
@@ -70,34 +61,26 @@ def search(
             include_documents=include_documents
         )
 
-        # 追加フィルタ（prefix, min_score）
+        # 結果の整形
         results = raw.get("results", [])
-        filtered: List[Dict[str, Any]] = []
+        formatted: List[Dict[str, Any]] = []
         for item in results:
-            if filepath_prefix and item.get("filepath") and not str(item["filepath"]).startswith(filepath_prefix):
-                continue
-            score = item.get("score")
-            if min_score is not None and (score is None or score < min_score):
-                continue
             # documentのプレビュー制限（過剰な内容を避ける）
             doc = item.get("document") if include_documents else None
             if isinstance(doc, str) and len(doc) > 500:
                 doc = doc[:500] + "..."
-            filtered.append({
+            formatted.append({
                 "filepath": item.get("filepath"),
-                "score": score,
+                "score": item.get("score"),
                 "document": doc,
                 "metadata": item.get("metadata", {}),
             })
 
-        # スコアで降順ソート
-        filtered.sort(key=lambda x: (x["score"] is not None, x["score"]), reverse=True)
-
         return {
             "status": "success",
             "message": "検索が完了しました",
-            "results": filtered,
-            "count": len(filtered),
+            "results": formatted,
+            "count": len(formatted),
             "query_vector_dimension": len(query_vec) if isinstance(query_vec, list) else None,
             "persist_directory": raw.get("persist_directory"),
         }
