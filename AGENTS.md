@@ -16,6 +16,7 @@
   - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）、検索（query）、取得（get）、削除（delete）
   - `mcp_server.py`: FastMCPでツールを登録（実装は`src/semche/tools/`へ委譲）
   - MCPツール: `hello`, `put_document`, `search`（セマンティック検索）, `delete_document`（単一ID削除）
+  - CLIツール: `doc-update`（一括ドキュメント登録、ワイルドカード対応、日付フィルタ、ignoreパターン、IDプレフィックス）
 - 今後の拡張: バッチ削除・条件削除、ツールの拡充、パフォーマンス最適化
 
 ### 開発・運用手順
@@ -24,8 +25,9 @@
 2. 依存管理は`pyproject.toml`で行い、`uv sync`でインストール。
 3. サーバー起動は`uv run python src/semche/mcp_server.py`。
 4. MCP Inspectorによる対話テストが可能（`uv run mcp dev src/semche/mcp_server.py`）。
-5. テストは`uv run pytest`で実行。
-6. コード品質チェックは`uv run ruff check .`（Lint）と`uv run mypy src/semche`（型チェック）で実行。
+5. CLI起動は`uv run doc-update`（一括ドキュメント登録）。
+6. テストは`uv run pytest`で実行。
+7. コード品質チェックは`uv run ruff check .`（Lint）と`uv run mypy src/semche`（型チェック）で実行。
 
 ### プロジェクト構成例
 
@@ -44,6 +46,10 @@
 │   │   ├── search.py.exp.md         # searchツール詳細設計
 │   │   ├── delete.py                # delete_documentツール
 │   │   └── delete.py.exp.md         # delete_documentツール詳細設計
+│   ├── cli/                         # CLIツール
+│   │   ├── __init__.py
+│   │   ├── bulk_register.py         # doc-updateコマンド（一括登録）
+│   │   └── bulk_register.py.exp.md  # CLI詳細設計
 │   ├── embedding.py                 # ベクトル埋め込み機能
 │   ├── embedding.py.exp.md          # 埋め込みモジュール詳細設計書
 │   ├── chromadb_manager.py          # ChromaDB保存管理
@@ -53,6 +59,7 @@
 │   ├── test_delete.py                # 削除ツールのテスト
 │   ├── test_search.py                # 検索ツールのテスト
 │   ├── test_embedding_helper.py      # ensure_single_vectorのテスト
+│   ├── test_cli_bulk_register.py     # CLI一括登録のテスト
 │   └── ...
 ├── story/              # ストーリー管理（要件・設計・完了記録）
 ├── pyproject.toml      # 依存管理

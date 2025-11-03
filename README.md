@@ -71,6 +71,79 @@ MCP Inspectorでの使用例:
 - パラメータなしで`hello`を呼び出し: "Hello, World!"を返す
 - 名前"Alice"で`hello`を呼び出し: "Hello, Alice!"を返す
 
+### CLIツール: doc-update
+
+ローカルファイル群を一括でベクトル化し、ChromaDBに登録するCLIツールです。
+
+#### インストール後の起動
+
+```bash
+uv sync  # エントリポイントを有効化
+doc-update [オプション] [入力パス...]
+```
+
+#### 基本的な使用例
+
+```bash
+# ディレクトリ配下のMarkdownファイルを登録
+doc-update ./docs/**/*.md --file-type note
+
+# プレフィックス付きで登録（実行場所: /var）
+cd /var
+doc-update test/**/*.md --id-prefix abc --file-type note
+# → test/test1.md は abc:test/test1.md として登録
+
+# 日付フィルタとignoreパターン
+doc-update ./wiki --filter-from-date 2025-11-01 --ignore "**/.git/**" --file-type wiki
+
+# ChromaDB保存先を指定
+doc-update ./notes --chroma-dir /tmp/chroma --file-type memo
+```
+
+#### オプション一覧
+
+- `inputs` (位置引数): ファイル/ディレクトリ/ワイルドカードパターン（複数可）
+  - 例: `./docs`, `**/*.md`, `/var/test/**/*.txt`
+- `--id-prefix PREFIX`: ドキュメントIDのプレフィックス
+  - 指定すると `PREFIX:相対パス` 形式のIDが生成されます
+- `--file-type TYPE`: メタデータのfile_type（デフォルト: `none`）
+  - 単一値のみ指定可能（例: `spec`, `note`, `code`）
+- `--filter-from-date YYYY-MM-DD`: 指定日時以降に更新されたファイルのみ対象
+  - ISO8601形式も可（例: `2025-11-01T12:30:45`）
+- `--ignore PATTERN`: 除外パターン（複数回指定可、glob形式）
+  - 例: `--ignore "**/.git/**" --ignore "**/node_modules/**"`
+- `--chroma-dir DIR`: ChromaDB保存先ディレクトリ
+  - 環境変数 `SEMCHE_CHROMA_DIR` より優先されます
+
+#### ID生成ルール
+
+- 実行ディレクトリ（`cwd`）からの相対パスをIDとして使用
+- `--id-prefix` を指定すると `プレフィックス:相対パス` 形式
+- パスセパレータは `/` に統一
+
+**例**:
+
+```bash
+cd /var
+doc-update test/file.md --id-prefix myproject
+# → ID: myproject:test/file.md
+```
+
+#### 処理の流れ
+
+1. 入力パターン（ワイルドカード/ディレクトリ/ファイル）を解決
+2. ignoreパターンと日付フィルタを適用
+3. ファイル内容をUTF-8で読み込み（バイナリはスキップ）
+4. テキストをベクトル化（768次元）
+5. ChromaDBに一括保存（upsert: 既存IDは更新）
+6. 結果サマリを出力（成功/スキップ件数）
+
+#### ヘルプ表示
+
+```bash
+doc-update --help
+```
+
 ### テストの実行
 
 pytestを使ってテストスイートを実行:
