@@ -4,11 +4,22 @@ from datetime import datetime
 import pytest
 
 from src.semche.chromadb_manager import ChromaDBError, ChromaDBManager
+from src.semche.embedding import Embedder
 
 
-def test_init_and_persist_dir(tmp_path):
+# Embedder fixture
+@pytest.fixture
+def embedder():
+    return Embedder()
+
+
+def test_init_and_persist_dir(tmp_path, embedder):
     # コンストラクタ引数優先
-    mgr = ChromaDBManager(persist_directory=str(tmp_path), collection_name="docs_test")
+    mgr = ChromaDBManager(
+        persist_directory=str(tmp_path),
+        collection_name="docs_test",
+        embedding_function=embedder.embeddings
+    )
     assert os.path.isdir(str(tmp_path)) or True  # 作成されるかは実装依存、少なくともパスは使用される
     # 取得できること
     res = mgr.save(
@@ -28,8 +39,15 @@ def test_init_and_persist_dir(tmp_path):
     assert got["metadatas"][0]["file_type"] == "spec"
 
 
-def test_batch_and_upsert(tmp_path):
-    mgr = ChromaDBManager(persist_directory=str(tmp_path), collection_name="docs_batch")
+
+
+
+def test_batch_and_upsert(tmp_path, embedder):
+    mgr = ChromaDBManager(
+        persist_directory=str(tmp_path),
+        collection_name="docs_batch",
+        embedding_function=embedder.embeddings
+    )
 
     # 初回保存（2件）
     res1 = mgr.save(
@@ -61,9 +79,13 @@ def test_batch_and_upsert(tmp_path):
     assert ids_to_doc["/b"] == "B2"
 
 
-def test_persistence_across_instances(tmp_path):
+def test_persistence_across_instances(tmp_path, embedder):
     # 1つ目のインスタンスで保存
-    mgr1 = ChromaDBManager(persist_directory=str(tmp_path), collection_name="docs_persist")
+    mgr1 = ChromaDBManager(
+        persist_directory=str(tmp_path),
+        collection_name="docs_persist",
+        embedding_function=embedder.embeddings
+    )
     mgr1.save(
         embeddings=[[0.0], [1.0], [2.0]],
         documents=["X", "Y", "Z"],
@@ -72,13 +94,21 @@ def test_persistence_across_instances(tmp_path):
     )
 
     # 2つ目のインスタンス（同じディレクトリ/コレクション）で取得できるか
-    mgr2 = ChromaDBManager(persist_directory=str(tmp_path), collection_name="docs_persist")
+    mgr2 = ChromaDBManager(
+        persist_directory=str(tmp_path),
+        collection_name="docs_persist",
+        embedding_function=embedder.embeddings
+    )
     got = mgr2.get_by_ids(["/x", "/y", "/z"])
     assert set(got["ids"]) == {"/x", "/y", "/z"}
 
 
-def test_input_validation_errors(tmp_path):
-    mgr = ChromaDBManager(persist_directory=str(tmp_path), collection_name="docs_err")
+def test_input_validation_errors(tmp_path, embedder):
+    mgr = ChromaDBManager(
+        persist_directory=str(tmp_path),
+        collection_name="docs_err",
+        embedding_function=embedder.embeddings
+    )
 
     with pytest.raises(ChromaDBError):
         mgr.save(embeddings=[], documents=[], filepaths=[])

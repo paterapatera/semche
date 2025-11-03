@@ -6,11 +6,17 @@
 
 本プロジェクトは、LangChainとChromaDBを使用したベクトル検索機能を持つModel Context Protocol (MCP) サーバーです。テキスト埋め込み機能とベクトルストレージを提供し、セマンティック検索アプリケーションに利用できます。
 
+**v0.3.0の主な機能**:
+
+- LangChainベクトルストア統合による検索機能の改善
+- 将来のハイブリッド検索（dense + sparse）への拡張を見据えた設計
+
 ## 機能
 
 - **MCPサーバー**: Model Context Protocolの実装
 - **テキスト埋め込み**: sentence-transformers/stsb-xlm-r-multilingualを使用して、テキストを768次元ベクトルに変換
 - **ベクトルストレージ**: メタデータ（filepath、updated_at、file_type）とともにベクトルをChromaDBに永続化
+- **LangChain統合**: LangChain Chromaベクトルストアを使用した検索機能
 - **Upsert対応**: 同じfilepathで保存する場合、既存ドキュメントを自動更新
 
 ## 必要要件

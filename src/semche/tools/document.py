@@ -19,7 +19,9 @@ def _get_embedder() -> Embedder:
 def _get_chromadb_manager() -> ChromaDBManager:
     global _chromadb_manager
     if _chromadb_manager is None:
-        _chromadb_manager = ChromaDBManager()
+        embedder = _get_embedder()
+        # EmbedderのHuggingFaceEmbeddingsインスタンスをembedding_functionとして渡す
+        _chromadb_manager = ChromaDBManager(embedding_function=embedder.embeddings)
     return _chromadb_manager
 
 

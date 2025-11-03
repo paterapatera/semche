@@ -353,7 +353,11 @@ def main() -> int:
     # Initialize embedder and ChromaDB manager
     try:
         embedder = Embedder()
-        chroma_mgr = ChromaDBManager(persist_directory=args.chroma_dir)
+        # EmbedderのHuggingFaceEmbeddingsインスタンスをembedding_functionとして渡す
+        chroma_mgr = ChromaDBManager(
+            persist_directory=args.chroma_dir,
+            embedding_function=embedder.embeddings
+        )
         logger.info(f"ChromaDB directory: {chroma_mgr.persist_directory}")
     except Exception as e:
         logger.error(f"Failed to initialize: {e}")

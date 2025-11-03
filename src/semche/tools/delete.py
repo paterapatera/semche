@@ -1,15 +1,26 @@
 from typing import Optional
 
 from ..chromadb_manager import ChromaDBError, ChromaDBManager
+from ..embedding import Embedder
 
-# Module-level singleton (lazy init)
+# Module-level singletons (lazy init)
+_embedder: Optional[Embedder] = None
 _chromadb_manager: Optional[ChromaDBManager] = None
+
+
+def _get_embedder() -> Embedder:
+    global _embedder
+    if _embedder is None:
+        _embedder = Embedder()
+    return _embedder
 
 
 def _get_chromadb_manager() -> ChromaDBManager:
     global _chromadb_manager
     if _chromadb_manager is None:
-        _chromadb_manager = ChromaDBManager()
+        embedder = _get_embedder()
+        # EmbedderのHuggingFaceEmbeddingsインスタンスをembedding_functionとして渡す
+        _chromadb_manager = ChromaDBManager(embedding_function=embedder.embeddings)
     return _chromadb_manager
 
 

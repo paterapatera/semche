@@ -14,6 +14,8 @@
 - 実装済み機能:
   - `embedding.py`: sentence-transformers/stsb-xlm-r-multilingualによる768次元ベクトル変換（ヘルパー`ensure_single_vector()`を提供）
   - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）、検索（query）、取得（get）、削除（delete）
+    - **v0.3.0**: LangChain Chromaベクトルストア統合（`similarity_search_by_vector_with_score()`使用）
+    - 将来のハイブリッド検索（dense + sparse）への拡張を見据えた設計
   - `mcp_server.py`: FastMCPでツールを登録（実装は`src/semche/tools/`へ委譲）
   - MCPツール:
     - `put_document`: ドキュメント登録
@@ -24,7 +26,7 @@
     - **デフォルト: 絶対パスでID生成**（v0.2.0より）
     - `--use-relative-path` オプションで相対パスに切り替え可能
     - パス区切り文字を `/` に統一（Windows互換性）
-- 今後の拡張: バッチ削除・条件削除、ツールの拡充、パフォーマンス最適化
+- 今後の拡張: ハイブリッド検索（dense + sparse）、バッチ削除・条件削除、ツールの拡充、パフォーマンス最適化
 
 ### 開発・運用手順
 

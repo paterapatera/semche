@@ -1,13 +1,15 @@
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 try:
     import chromadb
     from chromadb.config import Settings
+    from langchain_chroma import Chroma
 except ImportError:
     chromadb = None
+    Chroma = None  # type: ignore[misc]
 
 
 class ChromaDBError(Exception):
@@ -29,6 +31,7 @@ class ChromaDBManager:
         persist_directory: Optional[str] = None,
         collection_name: str = "documents",
         distance: str = "cosine",
+        embedding_function: Optional[Any] = None,
     ) -> None:
         if chromadb is None:
             logging.error("chromadb がインストールされていません。")
@@ -41,6 +44,7 @@ class ChromaDBManager:
         )
         self.collection_name = collection_name
         self.distance = distance
+        self.embedding_function = embedding_function
 
         # クライアント初期化（ローカル永続化）
         try:
@@ -62,6 +66,19 @@ class ChromaDBManager:
         except Exception as e:
             logging.error(f"コレクション作成/取得に失敗: {e}")
             raise ChromaDBError(f"コレクション作成/取得に失敗: {e}")
+
+        # LangChain Chroma vectorstore（オプショナル）
+        self.vectorstore: Optional[Any] = None
+        if embedding_function and Chroma is not None:
+            try:
+                self.vectorstore = Chroma(
+                    client=self.client,
+                    collection_name=self.collection_name,
+                    embedding_function=embedding_function,
+                )
+            except Exception as e:
+                logging.warning(f"LangChain Chroma初期化に失敗（フォールバック可能）: {e}")
+                self.vectorstore = None
 
     def _to_iso8601(self, value: Optional[Union[str, datetime]]) -> Optional[str]:
         if value is None:
@@ -211,51 +228,41 @@ class ChromaDBManager:
 
         Returns ChromaDBのquery結果をラップした辞書。
         1件のクエリを想定（query_embeddings[0]）。
+        
+        LangChain Chromaを使用して検索を実行。
         """
         try:
-            include_fields: List[Literal["documents", "embeddings", "metadatas", "distances", "uris", "data"]] = [
-                "metadatas", "distances"
-            ]
-            if include_documents:
-                include_fields.append("documents")
-
-            res = self.collection.query(
-                query_embeddings=list(query_embeddings),
-                n_results=int(max(1, top_k)),
-                where=where if where else None,
-                include=include_fields,
-            )
-
-            # Chroma の返却は各フィールドが [ [ ... ] ] の二重配列（クエリ毎）
-            ids = (res.get("ids") or [[]])[0]
-            metadatas = (res.get("metadatas") or [[]])[0]
-            distances = (res.get("distances") or [[]])[0]
-            documents = (res.get("documents") or [[]])[0] if include_documents else []
-
-            # ids が返らない環境でも動作するよう、最長の長さで合わせる
-            length = max(len(metadatas), len(distances), len(documents), len(ids))
-
-            items: List[Dict[str, Any]] = []
-            for i in range(length):
-                _id = ids[i] if i < len(ids) else None
-                md = metadatas[i] if i < len(metadatas) else {}
-                dist = distances[i] if i < len(distances) else None
-                # cosine 距離を類似度に変換（距離がない場合は None）
-                score = 1.0 - dist if isinstance(dist, (int, float)) else None
-                doc = documents[i] if include_documents and i < len(documents) else None
-                items.append(
-                    {
-                        "id": _id,
-                        "filepath": md.get("filepath"),
-                        "score": score,
-                        "document": doc,
-                        "metadata": {
-                            "file_type": md.get("file_type"),
-                            "updated_at": md.get("updated_at"),
-                        },
-                    }
+            if self.vectorstore is None:
+                raise ChromaDBError(
+                    "LangChain Chromaが初期化されていません。"
+                    "embedding_functionを指定してChromaDBManagerを初期化してください。"
                 )
-
+            
+            query_vec = list(query_embeddings[0])
+            
+            # similarity_search_by_vector_with_relevance_scores を使用
+            results = self.vectorstore.similarity_search_by_vector_with_relevance_scores(
+                embedding=query_vec,
+                k=int(max(1, top_k)),
+                filter=where if where else None,
+            )
+            
+            # 結果を既存の形式に変換
+            items: List[Dict[str, Any]] = []
+            for doc, score in results:
+                # LangChainはsimilarityスコアを返す（0〜1、高いほど類似）
+                metadata = doc.metadata or {}
+                items.append({
+                    "id": metadata.get("filepath"),  # filepathをIDとして使用
+                    "filepath": metadata.get("filepath"),
+                    "score": score,
+                    "document": doc.page_content if include_documents else None,
+                    "metadata": {
+                        "file_type": metadata.get("file_type"),
+                        "updated_at": metadata.get("updated_at"),
+                    },
+                })
+            
             return {
                 "status": "success",
                 "collection": self.collection_name,
