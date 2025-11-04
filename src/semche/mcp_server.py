@@ -4,7 +4,10 @@ This module hosts the FastMCP server instance and registers tools.
 Actual tool implementations live under src.semche.tools.*
 """
 
+from typing import Annotated
+
 from mcp.server.fastmcp import FastMCP
+from pydantic import Field
 
 from semche.tools.delete import delete_document as _delete_document_tool
 from semche.tools.document import put_document as _put_document_tool
@@ -14,24 +17,16 @@ from semche.tools.search import search as _search_tool
 mcp = FastMCP("semche")
 
 
-@mcp.tool()
+@mcp.tool(
+    name="put_document",
+    description="テキストをベクトル化してChromaDBに保存（upsert）。既存IDは更新、未登録は新規作成。",
+)
 def put_document(
-    text: str,
-    filepath: str,
-    file_type: str = None,
-    normalize: bool = False,
+    text: Annotated[str, Field(description="保存するテキスト内容")],
+    filepath: Annotated[str, Field(description="ドキュメントIDとして使うfilepathまたはURL")],
+    file_type: Annotated[str | None, Field(description="ドキュメントの種類（任意）")] = None,
+    normalize: Annotated[bool, Field(description="埋め込みベクトルを正規化するか（デフォルトFalse）")] = False,
 ) -> dict:
-    """テキストをベクトル化してChromaDBに保存します（upsert）。
-
-    既存のfilepathがある場合は更新、なければ新規追加します。
-    filepathにはURLも指定可能です。
-
-    Args:
-        text: 保存するテキスト内容
-        filepath: ドキュメントIDとして使うfilepathまたはURL
-        file_type: ドキュメントの種類（任意）
-        normalize: 埋め込みベクトルを正規化するか。MCPでは不要の機能（デフォルトFalse）
-    """
     return _put_document_tool(
         text=text,
         filepath=filepath,
@@ -39,22 +34,19 @@ def put_document(
         normalize=normalize,
     )
 
+ 
 
-@mcp.tool()
+
+@mcp.tool(
+    name="search",
+    description="ハイブリッド検索（Dense+Sparse, RRF）。file_typeフィルタやドキュメント内容の返却を制御可能。",
+)
 def search(
-    query: str,
-    top_k: int = 5,
-    file_type: str | None = None,
-    include_documents: bool = True,
+    query: Annotated[str, Field(description="検索クエリ文字列")],
+    top_k: Annotated[int, Field(description="取得する上位k件の数（デフォルト5、1以上を推奨）", ge=1)] = 5,
+    file_type: Annotated[str | None, Field(description="メタデータのfile_typeでフィルタ（任意）")] = None,
+    include_documents: Annotated[bool, Field(description="ドキュメント内容を結果に含めるか（デフォルトTrue）")] = True,
 ) -> dict:
-    """セマンティック検索（ChromaDB）。
-    
-    Args:
-        query: 検索クエリ文字列
-        top_k: 取得する上位k件の数（デフォルト5）
-        file_type: メタデータのfile_typeでフィルタ（任意）
-        include_documents: ドキュメント内容を結果に含めるか（デフォルトTrue）
-    """
     return _search_tool(
         query=query,
         top_k=top_k,
@@ -62,17 +54,19 @@ def search(
         include_documents=include_documents,
     )
 
+ 
 
-@mcp.tool()
-def delete_document(filepath: str) -> dict:
-    """指定したfilepath(ID)のドキュメントを削除します。
 
-    存在しない場合もエラーにはせずdeleted_count=0で返します。
-
-    Args:
-        filepath: 削除対象のドキュメントID（filepath）
-    """
+@mcp.tool(
+    name="delete_document",
+    description="指定したfilepath(ID)のドキュメントを削除。存在しない場合もエラーにせずdeleted_count=0を返す。",
+)
+def delete_document(
+    filepath: Annotated[str, Field(description="削除対象のドキュメントID（filepath）")]
+) -> dict:
     return _delete_document_tool(filepath=filepath)
+
+ 
 
 
 if __name__ == "__main__":
