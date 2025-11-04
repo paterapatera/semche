@@ -4,19 +4,20 @@
 
 ## 概要
 
-本プロジェクトは、LangChainとChromaDBを使用したベクトル検索機能を持つModel Context Protocol (MCP) サーバーです。テキスト埋め込み機能とベクトルストレージを提供し、セマンティック検索アプリケーションに利用できます。
+本プロジェクトは、LangChain と ChromaDB によるベクトル検索に BM25 を組み合わせた「ハイブリッド検索（dense + sparse）」を提供する Model Context Protocol (MCP) サーバーです。テキスト埋め込み機能とベクトルストレージに加え、キーワード検索（BM25）を統合した高精度な検索体験を提供します。
 
-**v0.3.0の主な機能**:
+**v0.4.0 の主な変更**:
 
-- LangChainベクトルストア統合による検索機能の改善
-- 将来のハイブリッド検索（dense + sparse）への拡張を見据えた設計
+- デフォルト検索をハイブリッド（Dense + Sparse, RRF）へ完全移行（後方互換なし）
+- BM25 スパースエンコーダとカスタム RRF 実装を追加
+- ChromaDB から全文・メタデータを取得する `get_all_documents()` を実装
 
 ## 機能
 
 - **MCPサーバー**: Model Context Protocolの実装
-- **テキスト埋め込み**: sentence-transformers/stsb-xlm-r-multilingualを使用して、テキストを768次元ベクトルに変換
-- **ベクトルストレージ**: メタデータ（filepath、updated_at、file_type）とともにベクトルをChromaDBに永続化
-- **LangChain統合**: LangChain Chromaベクトルストアを使用した検索機能
+- **テキスト埋め込み**: sentence-transformers/stsb-xlm-r-multilingual を使用してテキストを768次元ベクトル化
+- **ベクトルストレージ**: メタデータ（filepath、updated_at、file_type）とともにベクトルを ChromaDB に永続化
+- **ハイブリッド検索（デフォルト）**: Dense（LangChain Chroma）と Sparse（BM25）の結果を RRF で統合
 - **Upsert対応**: 同じfilepathで保存する場合、既存ドキュメントを自動更新
 
 ## 必要要件
@@ -321,7 +322,7 @@ uv run mypy src/semche/mcp_server.py
 
 ### search
 
-クエリ文字列に対するセマンティック検索を実行し、類似ドキュメントを上位`top_k`件返します。
+クエリ文字列に対して Dense（ベクトル）と Sparse（BM25）を組み合わせたハイブリッド検索を実行し、RRF で統合した上位 `top_k` 件を返します。
 
 **パラメータ:**
 
@@ -354,7 +355,7 @@ uv run mypy src/semche/mcp_server.py
 ```json
 {
   "status": "success",
-  "message": "検索が完了しました",
+  "message": "ハイブリッド検索が完了しました",
   "results": [
     {
       "filepath": "/docs/dog.txt",
@@ -363,7 +364,7 @@ uv run mypy src/semche/mcp_server.py
     }
   ],
   "count": 1,
-  "query_vector_dimension": 768,
+  "query_vector_dimension": null,
   "persist_directory": "./chroma_db"
 }
 ```
@@ -424,14 +425,7 @@ uv run mypy src/semche/mcp_server.py
 
 ### Embedder (embedding.py)
 
-sentence-transformersを使用してテキストをベクトル埋め込みに変換します。
-
-```python
-from src.semche.embedding import Embedder
-
-embedder = Embedder()
-vector = embedder.addDocument("これはテストです。")  # 768次元ベクトルを返す
-```
+sentence-transformers を使用してテキストをベクトル埋め込みに変換します（ハイブリッド検索の Dense 側で使用）。
 
 ### ChromaDBManager (chromadb_manager.py)
 
@@ -448,6 +442,43 @@ result = mgr.save(
     updated_at=["2025-11-03T12:00:00"],
     file_types=["spec"]
 )
+```
+
+### HybridRetriever (hybrid_retriever.py)
+
+Dense（Chroma / LangChain）と Sparse（BM25）の結果を RRF で統合するハイブリッド検索ロジックです。
+
+```python
+from src.semche.hybrid_retriever import HybridRetriever
+from src.semche.chromadb_manager import ChromaDBManager
+
+mgr = ChromaDBManager()
+retriever = HybridRetriever(mgr, dense_weight=0.5, sparse_weight=0.5)
+items = retriever.search(query="検索語", top_k=5, where={"file_type": "note"})
+```
+
+### BM25SparseEncoder (sparse_encoder.py)
+
+rank-bm25 によるスパース検索（キーワード検索）モジュールです。ハイブリッド検索の Sparse 側で使用します。
+
+**日本語対応（必須）**:
+
+- MeCab + unidic-lite による形態素解析が必須
+- 日本語テキストを正確にキーワード分割
+- MeCab 未インストール時は初期化エラー（カスタムトークナイザ指定で回避可能）
+
+```python
+from src.semche.sparse_encoder import BM25SparseEncoder
+
+# デフォルト（MeCab必須）
+encoder = BM25SparseEncoder()
+encoder.build_index(["私は猫が好きです", "犬も好きです"], ["doc1", "doc2"])
+results = encoder.search("猫", top_k=1)
+
+# カスタムトークナイザ使用（MeCab不要）
+def custom_tokenizer(text):
+    return text.lower().split()
+encoder = BM25SparseEncoder(tokenizer=custom_tokenizer)
 ```
 
 ## 開発

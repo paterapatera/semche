@@ -2,36 +2,34 @@
 
 ## 概要
 
-`search` はクエリ文字列をベクトル化し、ChromaDB に保存済みのドキュメントからセマンティック類似検索を行うツール関数です。MCP サーバー（`mcp_server.py`）から `@mcp.tool()` で公開されます。
+`search` はクエリ文字列に対して Dense（ベクトル）と Sparse（BM25）を組み合わせたハイブリッド検索を実行し、RRF（Reciprocal Rank Fusion）で統合した結果を返すツール関数です。MCP サーバー（`mcp_server.py`）から `@mcp.tool()` で公開されます。
 
 ## ファイルパス
 
 - 実装: `/home/pater/semche/src/semche/tools/search.py`
 - 呼び出し元: `/home/pater/semche/src/semche/mcp_server.py`
 - 設計: `/home/pater/semche/src/semche/tools/search.py.exp.md`
-- 依存: `/home/pater/semche/src/semche/embedding.py`, `/home/pater/semche/src/semche/chromadb_manager.py`
+- 依存: `/home/pater/semche/src/semche/hybrid_retriever.py`, `/home/pater/semche/src/semche/chromadb_manager.py`, `/home/pater/semche/src/semche/tools/document.py`
 - テスト: `/home/pater/semche/tests/test_search.py`
 
 ## 利用クラス・ライブラリ（ファイルパス一覧）
 
-- `Embedder` / `EmbeddingError`: `/home/pater/semche/src/semche/embedding.py`
-- `ensure_single_vector`: `/home/pater/semche/src/semche/embedding.py`
-  - 用途: クエリの埋め込み結果を単一ベクトル形式（`List[float]`）に統一
+- `HybridRetriever` / `HybridRetrieverError`: `/home/pater/semche/src/semche/hybrid_retriever.py`
 - `ChromaDBManager` / `ChromaDBError`: `/home/pater/semche/src/semche/chromadb_manager.py`
-- 標準ライブラリ: `datetime`（現状は未使用、拡張用）
+- `_get_chromadb_manager`: `/home/pater/semche/src/semche/tools/document.py`（シングルトンの共有）
 
 ## 関数仕様
 
 ### `search(query: str, top_k: int = 5, file_type: Optional[str] = None, include_documents: bool = True) -> dict`
 
-- 役割: クエリ埋め込み → ChromaDB 近傍検索 → 結果を dict で返却
+- 役割: ハイブリッド検索（Dense + Sparse, RRF 統合）を実行し、結果を dict で返却
 - 引数:
   - `query`: 検索クエリ文字列（必須, 非空）
   - `top_k`: 上位件数（>=1）
   - `file_type`: メタデータ `file_type` でフィルタ
   - `include_documents`: ドキュメント本文プレビューを含めるか
 - 返り値: `dict`
-  - 成功時: `{status, message, results: [{filepath, score, document?, metadata}], count, query_vector_dimension, persist_directory}`
+  - 成功時: `{status, message, results: [{filepath, score, document?, metadata}], count, query_vector_dimension, persist_directory}`（`query_vector_dimension` はハイブリッド移行後は `None`）
   - 失敗時: `{status: "error", message, error_type}`
 
 ## 内部処理フロー
@@ -39,59 +37,41 @@
 ```
 search(...)
   ├─ バリデーション（query, top_k）
-  ├─ qvec = Embedder.addDocument(query)
-  ├─ query_vec = ensure_single_vector(qvec)  # 単一ベクトルに正規化
   ├─ where = {file_type?}
-  ├─ raw = ChromaDBManager.query([query_vec], top_k, where, include_documents)
-  ├─ results = raw["results"] を整形
-  ├─ document を最大500文字に制限（include_documents=True時）
+  ├─ chroma = _get_chromadb_manager()  # 共有シングルトン
+  ├─ retriever = HybridRetriever(chroma, dense_weight=0.5, sparse_weight=0.5)
+  ├─ items = retriever.search(query, top_k, where)
+  ├─ results = items を整形（documentプレビュー最大500文字）
   └─ dict で返却
 ```
-
-- `ensure_single_vector()`を使用して、クエリの埋め込み結果を明示的に単一ベクトルに変換
-- コードの重複を削減（以前は型チェックロジックがインライン実装）
-- 型安全性の向上
 
 ## エラー仕様
 
 - `ValidationError`: 空クエリ、top_k<=0
-- `EmbeddingError`: 埋め込み生成失敗
-- `ChromaDBError`: クエリ実行失敗
+- `HybridRetrieverError`: ハイブリッド検索実行失敗
+- `ChromaDBError`: ChromaDB 経由の取得失敗
 - その他例外: `error_type` にクラス名を入れて返却
 
 ## パフォーマンス/制限
 
-- `top_k` は適切な上限を設けることを推奨（例: 50）
+- `top_k` は適切な上限を推奨（例: 50）
 - document プレビューは最大500文字に制限
-- 将来的に `where_document` や前処理キャッシュの導入余地あり
+- RRF の定数は 60（`c=60`）。必要に応じて調整余地あり
+- Sparse 側コーパスは都度 `get_all_documents()` から構築しており、大規模データでは専用の永続インデックス管理が望ましい
 
 ## 変更履歴
 
+### v0.4.0 (2025-11-03)
+
+- **変更**: デフォルトの検索をハイブリッド（Dense + Sparse, RRF）に完全移行（後方互換なし）
+- **追加**: `HybridRetriever` を利用する実装に置換
+- **仕様**: 返却値の `query_vector_dimension` は `None` を返す
+
 ### v0.3.0 (2025-11-03)
 
-- **削除**: 不要なパラメータを削除
-  - `filepath_prefix`: アプリケーション側でフィルタリング可能
-  - `normalize`: 埋め込みモデル側で適切に正規化される
-  - `min_score`: ChromaDBのtop_kで十分
-- **簡素化**: フィルタリングロジックの削除とコードの簡素化
-- **改善**: 処理フローの明確化
-
-### v0.2.0 (2025-11-03)
-
-- **改善**: `ensure_single_vector()`ヘルパー関数を使用
-  - クエリの埋め込み結果を明示的に単一ベクトルに変換
-  - コードの重複削減（約10行削減）
-  - 型安全性の向上
-- **改善**: インポートに`ensure_single_vector`を追加
-
-### v0.1.0 (初回リリース)
-
-- **実装**: `search()`関数の基本機能
-- **実装**: セマンティック検索
-- **実装**: フィルタリング機能（file_type, filepath_prefix, min_score）
-- **実装**: エラーハンドリング
+- セマンティック検索（Dense のみ）版の簡素化
 
 ## 備考
 
-- Chroma の距離（cosine）は `1.0 - distance` で類似度に変換
-- 追加のフィルタリングが必要な場合は、アプリケーション側で実装することを推奨
+- Chroma の類似度スコアは LangChain の `similarity_search_with_relevance_scores` に準拠
+- 追加のフィルタリングが必要な場合は、アプリケーション側で実装を推奨

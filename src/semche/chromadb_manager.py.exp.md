@@ -7,7 +7,7 @@
 - LangChainの`Chroma`ベクトルストアとの統合
 - `query()`メソッドで`similarity_search_by_vector_with_score()`を使用（LangChain経由）
 - 既存のネイティブAPIへのフォールバック機能を維持
-- 将来のハイブリッド検索（dense + sparse）への拡張を見据えた設計
+- **v0.4.0**: ハイブリッド検索（dense + sparse）を支えるためのコーパス取得 `get_all_documents()` を追加
 
 コレクションはデフォルト`documents`、距離関数は`cosine`（変更可能）を採用します。IDにはファイルパスを使用し、同一ファイルは更新扱いとなります。
 
@@ -64,7 +64,8 @@ class ChromaDBManager:
     def save(self, embeddings, documents, filepaths, updated_at=None, file_types=None) -> dict
     def get_by_ids(self, ids) -> dict
     def delete(self, ids) -> dict
-    def query(self, query_embeddings, top_k=5, where=None, include_documents=True) -> dict
+  def query(self, query_embeddings, top_k=5, where=None, include_documents=True) -> dict
+  def get_all_documents(self, where=None, include_documents=True) -> list[dict]
 ```
 
 #### 初期化
@@ -141,6 +142,18 @@ class ChromaDBManager:
     "count": 件数
   }
   ```
+
+#### get_all_documents()
+
+- 目的: BM25 等のスパース検索用に、全文テキストとメタデータを一覧取得する
+- 入力:
+  - `where: dict | None` メタデータフィルタ（例: `{"file_type": "spec"}`）
+  - `include_documents: bool` 本文を含めるか（デフォルト True）
+- 実装:
+  - `collection.get(where=..., include=["metadatas", "documents"])` を使用
+  - 注意: `include` に `"ids"` は指定しない（Chroma の API が拒否するため）。ID は `metadatas.filepath` を優先し、なければ戻り値の `ids` を呼び出し側で利用
+- 戻り値: `[{"id": str | None, "document": str | None, "metadata": dict}, ...]`
+- 用途: `HybridRetriever` の Sparse 側（BM25）コーパス構築
 
 #### get_by_ids()
 

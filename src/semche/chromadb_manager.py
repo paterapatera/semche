@@ -217,6 +217,51 @@ class ChromaDBManager:
             logging.error(f"ChromaDB削除に失敗: {e}")
             raise ChromaDBError(f"ChromaDB削除に失敗: {e}")
 
+    def get_all_documents(
+        self,
+        where: Optional[Dict[str, Any]] = None,
+        include_documents: bool = True,
+    ) -> List[Dict[str, Any]]:
+        """コレクション内の全ドキュメントを取得する。
+
+        注意: ドキュメント数が多い場合はメモリ使用量が増えるため、将来的にページング対応を検討。
+
+        Args:
+            where: メタデータフィルタ
+            include_documents: 本文を含めるか
+
+        Returns:
+            List[Dict]: {id, document, metadata}
+        """
+        try:
+            include_fields: List[str] = ["metadatas"]
+            if include_documents:
+                include_fields.append("documents")
+
+            # Chromaのgetは引数なしで全件取得できる実装が多いが、環境差異に備えtry/except
+            res = self.collection.get(
+                where=where if where else None,
+                include=include_fields,  # type: ignore[arg-type]
+            )
+
+            ids = res.get("ids", []) or []
+            metadatas = res.get("metadatas", []) or []
+            documents = res.get("documents", []) or []
+
+            items: List[Dict[str, Any]] = []
+            for i, _id in enumerate(ids):
+                md = metadatas[i] if i < len(metadatas) else {}
+                doc = documents[i] if include_documents and i < len(documents) else None
+                items.append({
+                    "id": _id,
+                    "document": doc,
+                    "metadata": md,
+                })
+            return items
+        except Exception as e:
+            logging.error(f"ChromaDB全件取得に失敗: {e}")
+            raise ChromaDBError(f"ChromaDB全件取得に失敗: {e}")
+
     def query(
         self,
         query_embeddings: Sequence[Sequence[float]],

@@ -10,33 +10,33 @@
 
 ### 概要
 
-- 本プロジェクトはLangChainとChromaDBによるベクトル検索機能を目指すMCPサーバー実装です。
+- 本プロジェクトは LangChain と ChromaDB のベクトル検索に BM25 を統合したハイブリッド検索（dense + sparse）を提供する MCP サーバー実装です。
 - 実装済み機能:
-  - `embedding.py`: sentence-transformers/stsb-xlm-r-multilingualによる768次元ベクトル変換（ヘルパー`ensure_single_vector()`を提供）
-  - `chromadb_manager.py`: ローカル永続化ChromaDBへの保存（upsert対応、メタデータ: filepath/updated_at/file_type）、検索（query）、取得（get）、削除（delete）
-    - **v0.3.0**: LangChain Chromaベクトルストア統合（`similarity_search_by_vector_with_score()`使用）
-    - 将来のハイブリッド検索（dense + sparse）への拡張を見据えた設計
-  - `mcp_server.py`: FastMCPでツールを登録（実装は`src/semche/tools/`へ委譲）
+  - `embedding.py`: sentence-transformers/stsb-xlm-r-multilingual による 768 次元ベクトル変換（ヘルパー `ensure_single_vector()` を提供）
+  - `chromadb_manager.py`: ローカル永続化 ChromaDB への保存（upsert 対応、メタデータ: filepath/updated_at/file_type）、検索（query）、取得（get）、削除（delete）
+    - **v0.3.0**: LangChain Chroma ベクトルストア統合（`similarity_search_by_vector_with_score()` 使用）
+    - **v0.4.0**: ハイブリッド検索（dense + sparse, RRF）を標準化。BM25 スパースエンコーダと `HybridRetriever` を追加。`get_all_documents()` を実装
+  - `mcp_server.py`: FastMCP でツールを登録（実装は `src/semche/tools/` へ委譲）
   - MCPツール:
     - `put_document`: ドキュメント登録
-    - `search`: セマンティック検索（v0.3.0より簡素化: 必須パラメータは`query`のみ、オプションは`top_k`/`file_type`/`include_documents`）
-    - `delete_document`: 単一ID削除
+    - `search`: ハイブリッド検索（Dense + Sparse, RRF）。必須: `query`、オプション: `top_k`/`file_type`/`include_documents`
+    - `delete_document`: 単一 ID 削除
   - CLIツール: `doc-update`（一括ドキュメント登録）
-    - ワイルドカード対応、日付フィルタ、ignoreパターン、IDプレフィックス
-    - **デフォルト: 絶対パスでID生成**（v0.2.0より）
+    - ワイルドカード対応、日付フィルタ、ignore パターン、ID プレフィックス
+    - **デフォルト: 絶対パスで ID 生成**（v0.2.0 より）
     - `--use-relative-path` オプションで相対パスに切り替え可能
-    - パス区切り文字を `/` に統一（Windows互換性）
-- 今後の拡張: ハイブリッド検索（dense + sparse）、バッチ削除・条件削除、ツールの拡充、パフォーマンス最適化
+    - パス区切り文字を `/` に統一（Windows 互換性）
+- 今後の拡張: スパースインデックスの永続管理、条件削除/バッチ削除、ツールの拡充、パフォーマンス最適化
 
 ### 開発・運用手順
 
-1. 新規ツール追加はFastMCPの`@mcp.tool()`で公開し、実装は`src/semche/tools/*.py`に配置。テストは`tests/`配下に追加。
-2. 依存管理は`pyproject.toml`で行い、`uv sync`でインストール。
-3. サーバー起動は`uv run python src/semche/mcp_server.py`。
-4. MCP Inspectorによる対話テストが可能（`uv run mcp dev src/semche/mcp_server.py`）。
-5. CLI起動は`uv run doc-update`（一括ドキュメント登録）。
-6. テストは`uv run pytest`で実行。
-7. コード品質チェックは`uv run ruff check .`（Lint）と`uv run mypy src/semche`（型チェック）で実行。
+1. 新規ツール追加は FastMCP の `@mcp.tool()` で公開し、実装は `src/semche/tools/*.py` に配置。テストは `tests/` 配下に追加。
+2. 依存管理は `pyproject.toml` で行い、`uv sync` でインストール。
+3. サーバー起動は `uv run python src/semche/mcp_server.py`。
+4. MCP Inspector による対話テストが可能（`uv run mcp dev src/semche/mcp_server.py`）。
+5. CLI 起動は `uv run doc-update`（一括ドキュメント登録）。
+6. テストは `uv run pytest` で実行。
+7. コード品質チェックは `uv run ruff check .`（Lint）と `uv run mypy src/semche`（型チェック）で実行。
 
 ### プロジェクト構成例
 
@@ -50,7 +50,7 @@
 │   │   ├── document.py              # put_documentツール
 │   │   ├── document.py.exp.md       # put_documentツール詳細設計
 │   │   ├── search.py                # searchツール
-│   │   ├── search.py.exp.md         # searchツール詳細設計
+│   │   ├── search.py.exp.md         # searchツール詳細設計（ハイブリッド検索）
 │   │   ├── delete.py                # delete_documentツール
 │   │   └── delete.py.exp.md         # delete_documentツール詳細設計
 │   ├── cli/                         # CLIツール
@@ -60,11 +60,16 @@
 │   ├── embedding.py                 # ベクトル埋め込み機能
 │   ├── embedding.py.exp.md          # 埋め込みモジュール詳細設計書
 │   ├── chromadb_manager.py          # ChromaDB保存管理
-│   └── chromadb_manager.py.exp.md   # ChromaDBモジュール詳細設計書
+│   ├── chromadb_manager.py.exp.md   # ChromaDBモジュール詳細設計書
+│   ├── sparse_encoder.py            # BM25 スパースエンコーダ
+│   ├── sparse_encoder.py.exp.md     # スパースエンコーダ詳細設計
+│   ├── hybrid_retriever.py          # ハイブリッド検索（RRF統合）
+│   └── hybrid_retriever.py.exp.md   # ハイブリッド検索詳細設計
 ├── tests/              # テストコード
 │   ├── conftest.py                   # テスト分離（SEMCHE_CHROMA_DIRを一時ディレクトリに）
 │   ├── test_delete.py                # 削除ツールのテスト
-│   ├── test_search.py                # 検索ツールのテスト
+│   ├── test_search.py                # 検索ツールのテスト（ハイブリッド）
+│   ├── test_sparse_encoder.py        # BM25 エンコーダのテスト
 │   ├── test_embedding_helper.py      # ensure_single_vectorのテスト
 │   ├── test_cli_bulk_register.py     # CLI一括登録のテスト
 │   └── ...
@@ -76,19 +81,19 @@
 
 ### ツール追加・拡張のポイント
 
-- FastMCPの`@mcp.tool()`で公開し、実装は`src/semche/tools/*.py`に配置。関数のシグネチャは型ヒントとdocstringで定義し、READMEのツール一覧にパラメータ・返却値を追記する。
-- 戻り値は辞書（dict）形式を推奨（MCP Inspectorで構造化データとして表示される）。
-- ベクトル埋め込み・検索機能はLangChain/ChromaDBのAPI設計に準拠。
-- 詳細設計書は`.exp.md`形式で各コードファイルと同じ場所に配置（ツールごとに作成）。
+- FastMCP の `@mcp.tool()` で公開し、実装は `src/semche/tools/*.py` に配置。関数のシグネチャは型ヒントと docstring で定義し、README のツール一覧にパラメータ・返却値を追記。
+- 戻り値は辞書（dict）形式を推奨（MCP Inspector で構造化データとして表示される）。
+- 検索機能は LangChain/ChromaDB + BM25 を前提（ハイブリッド検索）。
+- 詳細設計書は `.exp.md` 形式で各コードファイルと同じ場所に配置（ツールごとに作成）。
 
 ### テスト・開発運用
 
-- MCP Inspectorで対話テスト可能。
-- pytestで自動テスト・カバレッジ計測。
-- Lintはruff（`uv run ruff check .`）で実行、自動修正は`--fix`オプション付与。
-- 型チェックはmypy（`uv run mypy src/semche`）で実行。
-- 依存追加時は`uv sync`で反映。
-- テスト分離: `tests/conftest.py` にて `SEMCHE_CHROMA_DIR` をテストごとに一意の一時ディレクトリへ設定（テスト間のDB汚染を防止）。
+- MCP Inspector で対話テスト可能。
+- pytest で自動テスト・カバレッジ計測。
+- Lint は ruff（`uv run ruff check .`）で実行、自動修正は `--fix` オプション付与。
+- 型チェックは mypy（`uv run mypy src/semche`）で実行。
+- 依存追加時は `uv sync` で反映。
+- テスト分離: `tests/conftest.py` にて `SEMCHE_CHROMA_DIR` をテストごとに一意の一時ディレクトリへ設定（テスト間の DB 汚染を防止）。
 
 ---
 

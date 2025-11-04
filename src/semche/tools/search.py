@@ -1,19 +1,11 @@
 from typing import Any, Dict, List, Optional
 
 from ..chromadb_manager import ChromaDBError, ChromaDBManager
-from ..embedding import Embedder, EmbeddingError, ensure_single_vector
+from ..hybrid_retriever import HybridRetriever, HybridRetrieverError
 from .document import _get_chromadb_manager  # reuse the same singleton
 
 # Module-level singletons (lazy init)
-_embedder: Optional[Embedder] = None
 _chromadb_manager: Optional[ChromaDBManager] = None
-
-
-def _get_embedder() -> Embedder:
-    global _embedder
-    if _embedder is None:
-        _embedder = Embedder()
-    return _embedder
 
 
 # _get_chromadb_manager is imported from document.py to share the same instance
@@ -25,7 +17,7 @@ def search(
     file_type: Optional[str] = None,
     include_documents: bool = True,
 ) -> Dict[str, Any]:
-    """クエリでセマンティック検索を行う（ChromaDB）。
+    """クエリでハイブリッド検索（dense + sparse, RRF）を行う。
 
     Returns a structured dict suitable for MCP Inspector rendering.
     """
@@ -43,53 +35,47 @@ def search(
                 "error_type": "ValidationError",
             }
 
-        # クエリ埋め込み
-        embedder = _get_embedder()
-        qvec = embedder.addDocument(query)
-        query_vec = ensure_single_vector(qvec)
-
         # メタデータフィルタ
         where = {}
         if file_type:
             where["file_type"] = file_type
 
         chroma = _get_chromadb_manager()
-        raw = chroma.query(
-            query_embeddings=[query_vec],
-            top_k=top_k,
-            where=where,
-            include_documents=include_documents
-        )
 
-        # 結果の整形
-        results = raw.get("results", [])
+        # ハイブリッド検索実行
+        retriever = HybridRetriever(chroma_manager=chroma, dense_weight=0.5, sparse_weight=0.5)
+        items = retriever.search(query=query, top_k=top_k, where=where or None)
+
+    # 結果の整形
         formatted: List[Dict[str, Any]] = []
-        for item in results:
+        for rank, item in enumerate(items):
+            score = float(item.get("score", 0.0))
             # documentのプレビュー制限（過剰な内容を避ける）
-            doc = item.get("document") if include_documents else None
-            if isinstance(doc, str) and len(doc) > 500:
-                doc = doc[:500] + "..."
+            content = item.get("document") if include_documents else None
+            if isinstance(content, str) and len(content) > 500:
+                content = content[:500] + "..."
+            md = item.get("metadata", {}) or {}
             formatted.append({
-                "filepath": item.get("filepath"),
-                "score": item.get("score"),
-                "document": doc,
-                "metadata": item.get("metadata", {}),
+                "filepath": md.get("filepath"),
+                "score": score,
+                "document": content,
+                "metadata": md,
             })
 
         return {
             "status": "success",
-            "message": "検索が完了しました",
+            "message": "ハイブリッド検索が完了しました",
             "results": formatted,
             "count": len(formatted),
-            "query_vector_dimension": len(query_vec) if isinstance(query_vec, list) else None,
-            "persist_directory": raw.get("persist_directory"),
+            "query_vector_dimension": None,
+            "persist_directory": chroma.persist_directory,
         }
 
-    except EmbeddingError as e:
+    except HybridRetrieverError as e:
         return {
             "status": "error",
-            "message": f"埋め込み生成に失敗しました: {str(e)}",
-            "error_type": "EmbeddingError",
+            "message": f"ハイブリッド検索に失敗しました: {str(e)}",
+            "error_type": type(e).__name__,
         }
     except ChromaDBError as e:
         return {
