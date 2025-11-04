@@ -34,8 +34,6 @@ def put_document(
         normalize=normalize,
     )
 
- 
-
 
 @mcp.tool(
     name="search",
@@ -54,8 +52,6 @@ def search(
         include_documents=include_documents,
     )
 
- 
-
 
 @mcp.tool(
     name="delete_document",
@@ -65,8 +61,6 @@ def delete_document(
     filepath: Annotated[str, Field(description="削除対象のドキュメントID（filepath）")]
 ) -> dict:
     return _delete_document_tool(filepath=filepath)
-
- 
 
 
 if __name__ == "__main__":
