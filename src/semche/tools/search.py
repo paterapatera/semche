@@ -16,8 +16,16 @@ def search(
     top_k: int = 5,
     file_type: Optional[str] = None,
     include_documents: bool = True,
+    max_content_length: Optional[int] = None,
 ) -> Dict[str, Any]:
     """クエリでハイブリッド検索（dense + sparse, RRF）を行う。
+
+    Args:
+        query: 検索クエリ文字列
+        top_k: 取得する上位件数（デフォルト: 5）
+        file_type: メタデータのfile_typeでフィルタ（オプション）
+        include_documents: ドキュメント本文を含めるか（デフォルト: True）
+        max_content_length: ドキュメント内容の最大文字数。Noneの場合は全文取得（デフォルト: None）
 
     Returns a structured dict suitable for MCP Inspector rendering.
     """
@@ -50,10 +58,10 @@ def search(
         formatted: List[Dict[str, Any]] = []
         for rank, item in enumerate(items):
             score = float(item.get("score", 0.0))
-            # documentのプレビュー制限（過剰な内容を避ける）
+            # documentの文字数制限（オプション）
             content = item.get("document") if include_documents else None
-            if isinstance(content, str) and len(content) > 500:
-                content = content[:500] + "..."
+            if isinstance(content, str) and max_content_length is not None and len(content) > max_content_length:
+                content = content[:max_content_length] + "..."
             md = item.get("metadata", {}) or {}
             formatted.append({
                 "filepath": md.get("filepath"),

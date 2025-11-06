@@ -44,12 +44,16 @@ def search(
     top_k: Annotated[int, Field(description="取得する上位k件の数（デフォルト5、1以上を推奨）", ge=1)] = 5,
     file_type: Annotated[str | None, Field(description="メタデータのfile_typeでフィルタ（任意）")] = None,
     include_documents: Annotated[bool, Field(description="ドキュメント内容を結果に含めるか（デフォルトTrue）")] = True,
+    max_content_length: Annotated[
+        int | None, Field(description="ドキュメント内容の最大文字数。Noneで全文取得（デフォルト: None）")
+    ] = None,
 ) -> dict:
     return _search_tool(
         query=query,
         top_k=top_k,
         file_type=file_type,
         include_documents=include_documents,
+        max_content_length=max_content_length,
     )
 
 

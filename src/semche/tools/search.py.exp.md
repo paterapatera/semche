@@ -20,14 +20,15 @@
 
 ## 関数仕様
 
-### `search(query: str, top_k: int = 5, file_type: Optional[str] = None, include_documents: bool = True) -> dict`
+### `search(query: str, top_k: int = 5, file_type: Optional[str] = None, include_documents: bool = True, max_content_length: Optional[int] = None) -> dict`
 
 - 役割: ハイブリッド検索（Dense + Sparse, RRF 統合）を実行し、結果を dict で返却
 - 引数:
   - `query`: 検索クエリ文字列（必須, 非空）
   - `top_k`: 上位件数（>=1）
   - `file_type`: メタデータ `file_type` でフィルタ
-  - `include_documents`: ドキュメント本文プレビューを含めるか
+  - `include_documents`: ドキュメント本文を含めるか
+  - `max_content_length`: ドキュメント内容の最大文字数。`None`（デフォルト）の場合は全文取得。整数値を指定した場合はその文字数で切り詰め（`"..."`付加）
 - 返り値: `dict`
   - 成功時: `{status, message, results: [{filepath, score, document?, metadata}], count, query_vector_dimension, persist_directory}`（`query_vector_dimension` はハイブリッド移行後は `None`）
   - 失敗時: `{status: "error", message, error_type}`
@@ -41,7 +42,7 @@ search(...)
   ├─ chroma = _get_chromadb_manager()  # 共有シングルトン
   ├─ retriever = HybridRetriever(chroma, dense_weight=0.5, sparse_weight=0.5)
   ├─ items = retriever.search(query, top_k, where)
-  ├─ results = items を整形（documentプレビュー最大500文字）
+  ├─ results = items を整形（max_content_lengthが指定されている場合は文字数制限、Noneの場合は全文）
   └─ dict で返却
 ```
 
@@ -55,11 +56,16 @@ search(...)
 ## パフォーマンス/制限
 
 - `top_k` は適切な上限を推奨（例: 50）
-- document プレビューは最大500文字に制限
+- document 内容はデフォルトで全文取得。大きなドキュメントの場合は `max_content_length` で制限可能
 - RRF の定数は 60（`c=60`）。必要に応じて調整余地あり
 - Sparse 側コーパスは都度 `get_all_documents()` から構築しており、大規模データでは専用の永続インデックス管理が望ましい
 
 ## 変更履歴
+
+### v0.5.0 (2025-11-06)
+
+- **追加**: `max_content_length` パラメータを追加。`None`（デフォルト）で全文取得、整数値指定で文字数制限
+- **変更**: デフォルト動作を500文字制限から全文取得に変更
 
 ### v0.4.0 (2025-11-03)
 

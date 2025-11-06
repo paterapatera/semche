@@ -19,7 +19,8 @@
   - `mcp_server.py`: FastMCP でツールを登録（実装は `src/semche/tools/` へ委譲）
   - MCPツール:
     - `put_document`: ドキュメント登録
-    - `search`: ハイブリッド検索（Dense + Sparse, RRF）。必須: `query`、オプション: `top_k`/`file_type`/`include_documents`
+    - `search`: ハイブリッド検索（Dense + Sparse, RRF）。必須: `query`、オプション: `top_k`/`file_type`/`include_documents`/`max_content_length`
+      - **v0.5.0**: `max_content_length` パラメータを追加。デフォルト（`None`）で全文取得、整数値指定で文字数制限
     - `delete_document`: 単一 ID 削除
   - CLIツール: `doc-update`（一括ドキュメント登録）
     - ワイルドカード対応、日付フィルタ、ignore パターン、ID プレフィックス

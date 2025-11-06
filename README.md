@@ -329,7 +329,8 @@ uv run mypy src/semche/mcp_server.py
 - `query` (string, 必須): 検索クエリ
 - `top_k` (number, オプション): 取得件数（デフォルト: 5）
 - `file_type` (string, オプション): メタデータの file_type でフィルタ
-- `include_documents` (boolean, オプション): 本文プレビューを含める（デフォルト: true）
+- `include_documents` (boolean, オプション): 本文を含める（デフォルト: true）
+- `max_content_length` (number, オプション): ドキュメント内容の最大文字数。Noneの場合は全文取得（デフォルト: None）
 
 **返却値:**
 
