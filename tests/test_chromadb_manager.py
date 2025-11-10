@@ -122,3 +122,55 @@ def test_input_validation_errors(tmp_path, embedder):
             documents=["a"],
             filepaths=["/x", "/y"],
         )
+
+
+def test_get_documents_by_prefix(tmp_path, embedder):
+    mgr = ChromaDBManager(
+        persist_directory=str(tmp_path),
+        collection_name="docs_prefix",
+        embedding_function=embedder.embeddings
+    )
+
+    # テストデータを保存
+    mgr.save(
+        embeddings=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]],
+        documents=["doc1", "doc2", "doc3"],
+        filepaths=["/src/file1.py", "/src/file2.py", "/test/file3.py"],
+        updated_at=[datetime(2025, 1, 1), datetime(2025, 1, 2), datetime(2025, 1, 3)],
+        file_types=["code", "code", "test"],
+    )
+
+    # 正常系: prefix="/src/", file_type="code" で検索
+    results = mgr.get_documents_by_prefix(prefix="/src/", file_type="code")
+    assert len(results) == 2
+    assert results[0]["id"] == "/src/file1.py"
+    assert results[0]["file_type"] == "code"
+    assert results[0]["document"] == "doc1"
+    assert results[1]["id"] == "/src/file2.py"
+    assert results[1]["file_type"] == "code"
+    assert results[1]["document"] == "doc2"
+
+    # 正常系: include_documents=False
+    results_no_doc = mgr.get_documents_by_prefix(
+        prefix="/src/", file_type="code", include_documents=False
+    )
+    assert len(results_no_doc) == 2
+    assert "document" not in results_no_doc[0]
+
+    # 正常系: top_k=1
+    results_top1 = mgr.get_documents_by_prefix(
+        prefix="/src/", file_type="code", top_k=1
+    )
+    assert len(results_top1) == 1
+
+    # 異常系: 一致しないprefix
+    results_no_match = mgr.get_documents_by_prefix(
+        prefix="/nonexistent/", file_type="code"
+    )
+    assert len(results_no_match) == 0
+
+    # 異常系: 一致しないfile_type
+    results_no_type = mgr.get_documents_by_prefix(
+        prefix="/src/", file_type="nonexistent"
+    )
+    assert len(results_no_type) == 0

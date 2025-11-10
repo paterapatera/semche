@@ -19,6 +19,7 @@ FastMCP を使用してツールを登録します。実際のツール実装は
 
 - `semche.tools.hello`: helloツールの実装
 - `semche.tools.document.put_document`: ドキュメント登録ツールの実装
+- `semche.tools.get_by_prefix.get_by_prefix`: ファイルパス前方一致検索ツールの実装
 
 ### 標準ライブラリ
 
@@ -26,11 +27,11 @@ FastMCP を使用してツールを登録します。実際のツール実装は
 
 ### 利用しているクラス・モジュール
 
-| モジュール/クラス | インポート元         | 用途                    |
-| ----------------- | -------------------- | ----------------------- |
-| `FastMCP`         | `mcp.server.fastmcp` | MCPサーバーの作成と管理 |
-| `hello`           | `semche.tools`       | helloツールの委譲先     |
-| `put_document`    | `semche.tools`       | 登録ツールの委譲先      |
+| モジュール/クラス | インポート元         | 用途                       |
+| ----------------- | -------------------- | -------------------------- |
+| `FastMCP`         | `mcp.server.fastmcp` | MCPサーバーの作成と管理    |
+| `put_document`    | `semche.tools`       | 登録ツールの委譲先         |
+| `get_by_prefix`   | `semche.tools`       | 前方一致検索ツールの委譲先 |
 
 ## グローバル変数とヘルパー関数
 
@@ -51,9 +52,9 @@ mcp = FastMCP("semche")
 
 本サーバーはツールの公開と委譲のみを担います。実装は tools 配下をご参照ください。
 
-- hello: `src/semche/tools/hello.py`（設計: `hello.py.exp.md`）
 - put_document: `src/semche/tools/document.py`（設計: `document.py.exp.md`）
 - search: `src/semche/tools/search.py`（設計: `search.py.exp.md`）
+- get_by_prefix: `src/semche/tools/get_by_prefix.py`（設計: `get_by_prefix.py.exp.md`）
 
 ## データフロー
 
@@ -61,7 +62,7 @@ mcp = FastMCP("semche")
 
 ```
 MCPクライアント
-    ↓ (ツール呼び出し: hello / put_document)
+    ↓ (ツール呼び出し: put_document / search / get_by_prefix)
 FastMCPサーバー (mcp_server)
     ↓ （引数をそのまま委譲）
 tools.* の各実装
@@ -120,8 +121,8 @@ stdioでMCPプロトコル通信を受け付けます。
 ## バージョン情報
 
 - 初版作成日: 2025-11-03
-- バージョン: 0.2.0
-- 最終更新日: 2025-01-03
+- バージョン: 0.3.0
+- 最終更新日: 2025-11-10
 
 ## 変更履歴
 
@@ -129,3 +130,4 @@ stdioでMCPプロトコル通信を受け付けます。
 | ---------- | ---------- | -------------------------------------------------------------------------------------------------- |
 | 2025-11-03 | 0.1.0      | 初版作成。FastMCPを使用したスケルトン実装                                                          |
 | 2025-01-03 | 0.2.0      | searchツールのシグネチャ簡素化: filepath_prefix, normalize, min_scoreパラメータを削除 (v0.3.0対応) |
+| 2025-11-10 | 0.3.0      | get_by_prefixツールの追加: ファイルパス前方一致検索機能の実装                                      |

@@ -91,7 +91,7 @@
 
 - MCP Inspector で対話テスト可能。
 - pytest で自動テスト・カバレッジ計測。
-- Lint は ruff（`uv run ruff check .`）で実行、自動修正は `--fix` オプション付与。
+- Lint は ruff（`uv run ruff check . --fix`）で実行。
 - 型チェックは mypy（`uv run mypy src/semche`）で実行。
 - 依存追加時は `uv sync` で反映。
 - テスト分離: `tests/conftest.py` にて `SEMCHE_CHROMA_DIR` をテストごとに一意の一時ディレクトリへ設定（テスト間の DB 汚染を防止）。

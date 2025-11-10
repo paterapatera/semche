@@ -241,7 +241,9 @@ uv run mypy src/semche/mcp_server.py
 │       │   ├── search.py            # searchツール
 │       │   ├── search.py.exp.md     # searchツール詳細設計
 │       │   ├── delete.py            # delete_documentツール
-│       │   └── delete.py.exp.md     # delete_documentツール詳細設計
+│       │   ├── delete.py.exp.md     # delete_documentツール詳細設計
+│       │   ├── get_by_prefix.py     # get_documents_by_prefixツール
+│       │   └── get_by_prefix.py.exp.md  # get_documents_by_prefixツール詳細設計
 │       ├── embedding.py            # テキスト埋め込み機能
 │       ├── embedding.py.exp.md     # 埋め込みモジュール詳細設計書
 │       ├── chromadb_manager.py     # ChromaDBストレージマネージャー
@@ -419,6 +421,62 @@ uv run mypy src/semche/mcp_server.py
   "filepath": "/docs/not_found.md",
   "collection": "documents",
   "persist_directory": "./chroma_db"
+}
+```
+
+### get_documents_by_prefix
+
+id（filepath）の前方一致＋file_type完全一致でドキュメントを取得します。ChromaDBのSQLiteを直接操作して検索を行います。
+
+**パラメータ:**
+
+- `prefix` (string, 必須): id（filepath）の前方一致条件
+- `file_type` (string, 必須): 完全一致条件
+- `include_documents` (boolean, 任意): 本文を含めるか（デフォルト: true）
+- `top_k` (integer, 任意): 最大取得件数（省略時は全件）
+
+**返却値:**
+
+- 辞書（dict）形式の結果
+  - 成功: `{status: "success", prefix, file_type, include_documents, top_k, count, results: [{id, document?, file_type}, ...]}`
+  - 失敗: `{status: "error", message, error_type}`
+
+**例:**
+
+```json
+{
+  "name": "get_documents_by_prefix",
+  "arguments": {
+    "prefix": "/src/",
+    "file_type": "code",
+    "include_documents": true,
+    "top_k": 5
+  }
+}
+```
+
+**レスポンス（成功）:**
+
+```json
+{
+  "status": "success",
+  "prefix": "/src/",
+  "file_type": "code",
+  "include_documents": true,
+  "top_k": 5,
+  "count": 2,
+  "results": [
+    {
+      "id": "/src/main.py",
+      "document": "print('hello')",
+      "file_type": "code"
+    },
+    {
+      "id": "/src/utils.py",
+      "document": "def helper(): pass",
+      "file_type": "code"
+    }
+  ]
 }
 ```
 

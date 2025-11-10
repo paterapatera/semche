@@ -1,5 +1,6 @@
 import logging
 import os
+import sqlite3
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence, Union
 
@@ -261,6 +262,58 @@ class ChromaDBManager:
         except Exception as e:
             logging.error(f"ChromaDB全件取得に失敗: {e}")
             raise ChromaDBError(f"ChromaDB全件取得に失敗: {e}")
+
+    def get_documents_by_prefix(
+        self,
+        prefix: str,
+        file_type: str,
+        include_documents: bool = True,
+        top_k: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        id（filepath）の前方一致＋file_type完全一致でドキュメントを取得（ChromaDBのSQLiteを直接操作）
+        Args:
+            prefix: id（filepath）の前方一致条件
+            file_type: 完全一致条件
+            include_documents: 本文を含めるか
+            top_k: 最大取得件数
+        Returns:
+            List[Dict]: {id, document, file_type}
+        """
+        db_path = os.path.join(self.persist_directory, "chroma.sqlite3")
+        results = []
+        if not os.path.exists(db_path):
+            raise ChromaDBError(f"ChromaDB SQLiteファイルが見つかりません: {db_path}")
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            sql = (
+                "SELECT e.embedding_id, "
+                "CASE WHEN ? THEN d.string_value ELSE NULL END as document, "
+                "ft.string_value AS file_type "
+                "FROM embeddings e "
+                "JOIN segments s ON e.segment_id = s.id "
+                "JOIN collections c ON s.collection = c.id "
+                "LEFT JOIN embedding_metadata d ON e.id = d.id AND d.key = 'chroma:document' "
+                "LEFT JOIN embedding_metadata ft ON e.id = ft.id AND ft.key = 'file_type' "
+                "WHERE c.name = ? AND e.embedding_id LIKE ? AND ft.string_value = ? "
+            )
+            params = [include_documents, self.collection_name, f"{prefix}%", file_type]
+            if top_k is not None:
+                sql += "LIMIT ? "
+                params.append(top_k)
+            cursor.execute(sql, params)
+            rows = cursor.fetchall()
+            for row in rows:
+                d = {"id": row[0], "file_type": row[2]}
+                if include_documents:
+                    d["document"] = row[1]
+                results.append(d)
+            conn.close()
+            return results
+        except Exception as e:
+            logging.error(f"get_documents_by_prefix失敗: {e}")
+            raise ChromaDBError(f"get_documents_by_prefix失敗: {e}")
 
     def query(
         self,

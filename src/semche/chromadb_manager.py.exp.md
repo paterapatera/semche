@@ -8,6 +8,7 @@
 - `query()`メソッドで`similarity_search_by_vector_with_score()`を使用（LangChain経由）
 - 既存のネイティブAPIへのフォールバック機能を維持
 - **v0.4.0**: ハイブリッド検索（dense + sparse）を支えるためのコーパス取得 `get_all_documents()` を追加
+- **v0.5.0**: SQLite直接操作によるファイルパス前方一致検索 `get_documents_by_prefix()` を追加
 
 コレクションはデフォルト`documents`、距離関数は`cosine`（変更可能）を採用します。IDにはファイルパスを使用し、同一ファイルは更新扱いとなります。
 
@@ -27,7 +28,7 @@
   - ファイルパス: 外部パッケージ
   - 用途: LangChainベクトルストア統合
 - 標準ライブラリ
-  - `os`, `logging`, `datetime`, `typing` (Any, Dict, List, Literal, Optional, Sequence, Union)
+  - `os`, `logging`, `datetime`, `typing` (Any, Dict, List, Literal, Optional, Sequence, Union), `sqlite3`
 
 ## 型アノテーション・型チェック対応
 
@@ -66,6 +67,7 @@ class ChromaDBManager:
     def delete(self, ids) -> dict
   def query(self, query_embeddings, top_k=5, where=None, include_documents=True) -> dict
   def get_all_documents(self, where=None, include_documents=True) -> list[dict]
+  def get_documents_by_prefix(self, prefix, file_type, include_documents=True, top_k=None) -> list[dict]
 ```
 
 #### 初期化
@@ -155,6 +157,40 @@ class ChromaDBManager:
 - 戻り値: `[{"id": str | None, "document": str | None, "metadata": dict}, ...]`
 - 用途: `HybridRetriever` の Sparse 側（BM25）コーパス構築
 
+#### get_documents_by_prefix()
+
+- **[v0.5.0] 新規追加**
+- 目的: ファイルパスの前方一致とファイルタイプの完全一致によるドキュメント検索（ChromaDBのSQLiteを直接操作）
+- 入力:
+  - `prefix: str` ID（filepath）の前方一致条件（SQLのLIKE句で`prefix%`を使用）
+  - `file_type: str` ファイルタイプの完全一致条件
+  - `include_documents: bool` 本文を含めるか（デフォルト True）
+  - `top_k: int | None` 最大取得件数（Noneの場合は全件取得）
+- 実装:
+  - ChromaDBのSQLiteデータベース（`chroma.sqlite3`）を直接操作
+  - 以下のテーブルをJOINしてデータを取得:
+    - `embeddings`: 埋め込みデータとID
+    - `segments`: セグメント情報
+    - `collections`: コレクション情報
+    - `embedding_metadata`: メタデータ（ドキュメント本文とファイルタイプ）
+  - SQLクエリ:
+    ```sql
+    SELECT e.embedding_id,
+           CASE WHEN ? THEN d.string_value ELSE NULL END as document,
+           ft.string_value AS file_type
+    FROM embeddings e
+    JOIN segments s ON e.segment_id = s.id
+    JOIN collections c ON s.collection = c.id
+    LEFT JOIN embedding_metadata d ON e.id = d.id AND d.key = 'chroma:document'
+    LEFT JOIN embedding_metadata ft ON e.id = ft.id AND ft.key = 'file_type'
+    WHERE c.name = ? AND e.embedding_id LIKE ? AND ft.string_value = ?
+    ```
+  - パラメータ: `[include_documents, collection_name, f"{prefix}%", file_type]`
+  - `top_k`指定時は`LIMIT`句を追加
+- 戻り値: `[{"id": str, "document": str | None, "file_type": str}, ...]`
+- エラー処理: SQLite接続エラーやクエリ実行エラーを`ChromaDBError`として送出
+- 用途: MCPツールでのファイルパスベースのドキュメント検索
+
 #### get_by_ids()
 
 - 目的: 保存済みデータの取得（テストや検証用途）
@@ -206,6 +242,15 @@ print(res)
 - `embedding_function`が渡されない場合は従来のネイティブAPIで動作（後方互換性）
 
 ## 変更履歴
+
+### v0.5.0 (2025-11-10)
+
+- **追加**: SQLite直接操作によるファイルパス前方一致検索機能
+  - `get_documents_by_prefix()`メソッドを追加
+  - パラメータ: `prefix`（前方一致）, `file_type`（完全一致）, `include_documents`, `top_k`
+  - ChromaDBのSQLiteデータベースを直接クエリ（embeddings, segments, collections, embedding_metadataテーブルをJOIN）
+  - MCPツールでのファイルパスベース検索をサポート
+- **改善**: インポート文の整理（`import sqlite3`をファイル先頭に移動）
 
 ### v0.3.0 (2025-11-03)
 

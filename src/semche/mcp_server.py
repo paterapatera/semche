@@ -11,6 +11,7 @@ from pydantic import Field
 
 from semche.tools.delete import delete_document as _delete_document_tool
 from semche.tools.document import put_document as _put_document_tool
+from semche.tools.get_by_prefix import get_documents_by_prefix as _get_documents_by_prefix_tool
 from semche.tools.search import search as _search_tool
 
 # Create FastMCP server instance
@@ -65,6 +66,24 @@ def delete_document(
     filepath: Annotated[str, Field(description="削除対象のドキュメントID（filepath）")]
 ) -> dict:
     return _delete_document_tool(filepath=filepath)
+
+
+@mcp.tool(
+    name="get_documents_by_prefix",
+    description="id（filepath）の前方一致＋file_type完全一致でドキュメントを取得。ChromaDBのSQLiteを直接操作。",
+)
+def get_documents_by_prefix(
+    prefix: Annotated[str, Field(description="id（filepath）の前方一致条件（必須）")],
+    file_type: Annotated[str, Field(description="完全一致条件（必須）")],
+    include_documents: Annotated[bool, Field(description="本文を含めるか（デフォルトTrue）")] = True,
+    top_k: Annotated[int | None, Field(description="最大取得件数（省略時は全件）")] = None,
+) -> dict:
+    return _get_documents_by_prefix_tool(
+        prefix=prefix,
+        file_type=file_type,
+        include_documents=include_documents,
+        top_k=top_k,
+    )
 
 
 if __name__ == "__main__":
